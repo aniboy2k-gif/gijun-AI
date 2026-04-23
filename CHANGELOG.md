@@ -4,9 +4,145 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
-## [0.1.1] — 2026-04-23
+## [0.1.2] — 2026-04-23
 
 ### Context
+
+Post-v0.1.1 public-value review. A Tier 2 codex-da-chain review (Gemini →
+ChatGPT → Claude Web, `architecture` role) found that v0.1.1's README
+contained overclaim (`governance platform/layer`), version drift (badge
+and `/health` example frozen at 0.1.0), unverifiable claims (canonical
+JSON, rate-limit enforcement), and no mechanism to prevent future
+claim-to-code drift. This release addresses the four DA blockers and the
+four improvement items, moving the repository toward L2 "reference-only
+public" status (see `docs/public-status-dod.md` for the full DoD).
+
+**No product code changes to the audit/HITL/policy engines** — this is
+honesty, CI, and documentation work built on top of the v0.1.1 gate. The
+only source change is `app.ts` reading version dynamically from root
+`package.json` to prevent future `/health` version drift.
+
+### Added
+
+- **`.github/workflows/claim-check.yml`** + **`.github/claim-map.yml`** —
+  CI job that fails the build if README references an `ASI##` claim or
+  `Architecture contract` without the backing test/source file declared
+  in the mapping. Prevents the v0.1.0-style drift where ASI08 was
+  documented but not enforced.
+- **`.github/workflows/ci.yml`** — build + test matrix on
+  `ubuntu-latest` + `macos-latest`, Node 22.
+- **`.github/workflows/codeql.yml`** — JavaScript/TypeScript security
+  scan on push/PR and weekly schedule.
+- **`.github/dependabot.yml`** — weekly npm + github-actions update PRs.
+- **`.github/pull_request_template.md`** — ASI/contract claim gate + test
+  checklist + single-user scope reminder.
+- **`.github/ISSUE_TEMPLATE/bug_report.yml`** and **`feature_request.yml`**
+  — guided issue intake with scope-check questions.
+- **`docs/public-status-dod.md`** — L1→L2→L3 level framework with
+  measurable Definition of Done checklists. L4 (production-dependency-
+  safe) is explicitly out of scope.
+- **`docs/project-framework.md`** — 5-axis (A/B/C/D/E) scoping framework
+  with boundary rules. Replaces the implicit 4-axis grouping the initial
+  DA review showed was not MECE.
+- **`docs/adoption-scenarios.md`** — by-scenario fit matrix (personal
+  learning ✓ / team adoption ✗ / production dependency ✗).
+- **`docs/legal.md`** — Axis-E concerns: MIT license semantics, fork
+  propagation, PII/GDPR redaction path, MCP spec dependency, model-
+  provider ToS monitoring.
+- **`CONTRIBUTING.md`** — PR workflow, single-axis scoping, claim-gate
+  requirements, out-of-scope list (multi-user, RBAC, SaaS).
+- **`packages/server/src/__tests__/`** (new directory) with 8 E2E tests:
+  - `health.e2e.test.ts` — `/health` returns root `package.json` version
+  - `rest-hitl-flow.e2e.test.ts` — critical task → 409 → approve → 200;
+    trivial task free transition; fail-closed 401 without token
+  - `rest-audit-chain.e2e.test.ts` — 3 appends + integrity-check valid;
+    tail ordering
+
+### Changed
+
+- **`README.md`** / **`README.ko.md`**:
+  - Tagline "personal AI-agent governance platform" → "personal single-
+    user audit/verification workbench". "governance platform/layer"
+    language removed throughout. "governance" retained only in the
+    narrow ASI08 naming context.
+  - Status line added at top: "Status: personal single-user tool — not
+    a production dependency. The HITL gate is a self-approval
+    speed-bump, not multi-party governance. Fork the project if you
+    need team mode, RBAC, or multi-user separation-of-duties."
+  - HITL module narrative reframed as self-approval speed-bump.
+  - Canonical JSON claim honesty: reproducibility is for recursive key
+    sorting only — **not RFC 8785 JCS**, no number or Unicode
+    normalization. Implementation path cited
+    (`audit/chain.ts:5-19`).
+  - Rate-limit claim honesty: advisory check in `evaluate()` (1-min
+    window); **consumer enforces actual request blocking** — server
+    does NOT return HTTP 429 automatically. Implementation paths cited.
+  - Roadmap reorganized: v0.3 "Team mode with per-user tokens and
+    RBAC" and "Multi-instance replication" moved to **"Out of scope
+    (fork required)"** block. v0.3+ only lists long-term nice-to-haves
+    that may never ship.
+  - Version badge switched to `shields.io/github/package-json/v/...`
+    dynamic badge so it tracks `package.json` automatically.
+  - `/health` curl example uses `<package.json version>` placeholder.
+  - `schema_migrations` chain updated to include `005_policy_eval_index`.
+  - Architecture contracts table gains a `Status` column
+    (`[passed]` / `[pending E2E]` / `[unverified]`).
+  - OWASP ASI mapping section gains a "Verification status summary"
+    table with per-ASI label + legend.
+  - Roadmap and Development sections link to new `docs/` documents.
+- **`packages/server/src/app.ts`**: `/health` reads version dynamically
+  from repository-root `package.json` (falling back through candidate
+  paths for src/dist layouts). Prevents the v0.1.0 drift where the
+  hardcoded string lagged `package.json`.
+- **`package.json`** description: "Personal AI Agent Governance
+  Workbench" → "Personal single-user AI agent audit/verification
+  workbench".
+- **`CHANGELOG.md`** v0.1.1 entry gains a **Retroactive honesty note**
+  explicitly stating that ASI08 was documented but not enforced in
+  v0.1.0 — flagged prominently for readers who might only skim the
+  latest release notes.
+
+### Scope decision
+
+- **C-1a single-user confirmed.** gijun-ai is positioned as a personal
+  1-user audit workbench. The HITL gate is a self-approval speed-bump.
+  Multi-user, RBAC, and team operation are **out of scope** — forks are
+  the expected path for those needs. This simplifies the threat model
+  (single `AGENTGUARD_TOKEN` is adequate), simplifies E2E test design
+  (no cross-user scenarios), and sets clear adopter expectations.
+
+### Migration
+
+- No schema changes. No breaking API changes. Existing v0.1.1 databases
+  continue to work unchanged.
+- The `/health` endpoint now reports the repository-root
+  `package.json` version string dynamically. Consumers that parsed the
+  hardcoded `"0.1.0"` string should expect `"0.1.2"` (and future
+  versions) to appear.
+
+### Deferred to v0.2 / later
+
+- MCP transport E2E tests (STDIO `child_process.spawn` + JSON-RPC
+  round-trip; HTTP auth flow)
+- `license-checker` integration for transitive-license audit
+- `packages/web` read-only dashboard
+- Release Gate concept as a reusable skill — deferred until a second
+  repository demonstrates the same pattern (YAGNI).
+
+
+
+### Context
+
+**Retroactive honesty note for v0.1.0 readers**: The v0.1.0 README (commit
+`5aa47b8`) claimed that ASI08 (Excessive Agency) was addressed by a HITL
+gate requiring a human-approval audit event before irreversible execution.
+**In v0.1.0 this contract was documented but not enforced in code** —
+`evaluateHitl` existed in `hitl/gate.ts` but was never called from
+`createTask` or `updateTaskStatus`, and no status-transition guard rejected
+`done` without an approval record. Anyone who evaluated v0.1.0 against its
+README would have found the claim false. v0.1.1 connects the gate (Phase G
+commit `69c3237`); v0.1.2 adds a CI `claim-check` workflow so this class
+of drift cannot recur silently.
 
 Phase F code review (mQMS framework) surfaced 3 Critical + 8 High issues
 against the v0.1.0 release. Phase G implements all 11 fixes across four

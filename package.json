@@ -1,7 +1,7 @@
 {
   "name": "gijun-ai",
-  "version": "0.1.1",
-  "description": "Personal AI Agent Governance Workbench \u2014 \uae30\uc900\uc744 \uc138\uc6b0\uace0, \uac80\uc99d\ud558\uba70, \ud559\uc2b5\ud55c\ub2e4",
+  "version": "0.1.2",
+  "description": "Personal single-user AI agent audit/verification workbench \u2014 \uae30\uc900\uc744 \uc138\uc6b0\uace0, \uac80\uc99d\ud558\uba70, \ud559\uc2b5\ud55c\ub2e4",
   "license": "MIT",
   "private": true,
   "engines": {

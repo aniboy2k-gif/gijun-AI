@@ -4,13 +4,15 @@
 
 > **Set the standard. Verify the work. Learn from the session.**
 >
-> A personal AI-agent governance platform — audit, verify, and learn from every Claude/LLM session that changes something that matters.
+> A personal single-user audit/verification workbench — audit, verify, and learn from every Claude/LLM session that changes something that matters.
 
-![version](https://img.shields.io/badge/version-0.1.0-blue)
+![version](https://img.shields.io/github/package-json/v/aniboy2k-gif/gijun-AI?color=blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
 ![status](https://img.shields.io/badge/status-v0.1%20alpha-yellow)
+
+**Status: personal single-user tool — not a production dependency.** The HITL gate is a self-approval speed-bump for a solo developer, not multi-party governance. Fork the project if you need team mode, RBAC, or multi-user separation-of-duties.
 
 ---
 
@@ -18,7 +20,7 @@
 
 Solo developers running Claude Max or similar agent tiers do serious work — ship code, touch production, edit policy documents — but the agent's reasoning, approvals, and cost footprint evaporate the moment the session ends. There's no audit trail you'd trust in a dispute, no gate to stop a half-verified idea from being executed, no memory that survives a `/clear`.
 
-**gijun-ai** is a local-first governance layer that sits between you and your agent:
+**gijun-ai** is a local-first audit/verification layer that sits between you and your agent:
 
 - **Audit** every decision to an append-only SHA-256 hash chain that survives redaction
 - **Verify** critical actions through a 4-axis HITL (human-in-the-loop) gate before they run
@@ -78,7 +80,7 @@ node packages/server/dist/server.js
 
 ```bash
 curl -s http://127.0.0.1:3456/health
-# → {"ok":true,"version":"0.1.0"}
+# → {"ok":true,"version":"<package.json version>"}  # e.g. "0.1.1"
 
 curl -s -X POST http://127.0.0.1:3456/tasks \
   -H "X-AgentGuard-Token: $AGENTGUARD_TOKEN" \
@@ -118,18 +120,18 @@ AGENTGUARD_TOKEN="$AGENTGUARD_TOKEN" \
 
 ---
 
-## Architecture contracts
+## Architecture contracts & verification status
 
-Six hard rules the implementation holds itself to. Every new feature must pass each one.
+Six hard rules the implementation holds itself to. Every new feature must pass each one. The `Status` column marks whether the contract is asserted by an automated test (`[passed]`), has only unit coverage and needs end-to-end verification (`[pending E2E]`), or is not yet asserted (`[unverified]`).
 
-| # | Contract | Enforcement |
-|---|----------|------------|
-| 1 | **Append-only audit** — existing audit rows are never mutated, only new rows appended | SQL `UPDATE`/`DELETE` absent on `audit_events`; hash chain verification in `POST /audit/integrity-check` |
-| 2 | **Full migration chain preflight** — server refuses to serve until every known migration is applied in order | `assertSchemaChain([...])` called before `app.listen()` in `server.ts` |
-| 3 | **Content-addressable redaction** — redaction replaces `payload` but keeps `original_hash`, so integrity survives takedowns | `audit_events.original_hash` column + chain links through `original_hash`, not the mutable payload |
-| 4 | **Fail-closed authentication** — server exits at startup without `AGENTGUARD_TOKEN`; every route requires the header | Startup guard in `server.ts` + `requireToken` middleware on every router except `/health` |
-| 5 | **Local-only binding** — listen address is `127.0.0.1`, never a public interface | Hardcoded `HOST` in `server.ts` and `transports.ts` |
-| 6 | **HITL gate before irreversibility** — policy- or risk-gated actions require an explicit human approval event before they can transition to `done` | `evaluateHitl()` in `hitl/gate.ts` + `POST /tasks/:id/hitl-approve` |
+| # | Contract | Enforcement | Status |
+|---|----------|-------------|:------:|
+| 1 | **Append-only audit** — existing audit rows are never mutated, only new rows appended | SQL `UPDATE`/`DELETE` absent on `audit_events`; hash chain verification in `POST /audit/integrity-check` | `[passed]` |
+| 2 | **Full migration chain preflight** — server refuses to serve until every known migration is applied in order | `assertSchemaChain([...])` called before `app.listen()` in `server.ts` | `[passed]` |
+| 3 | **Content-addressable redaction** — redaction replaces `payload` but keeps `original_hash`, so integrity survives takedowns | `audit_events.original_hash` column + chain links through `original_hash`, not the mutable payload | `[passed]` |
+| 4 | **Fail-closed authentication** — server exits at startup without `AGENTGUARD_TOKEN`; every route requires the header | Startup guard in `server.ts` + `requireToken` middleware on every router except `/health` | `[pending E2E]` |
+| 5 | **Local-only binding** — listen address is `127.0.0.1`, never a public interface | Hardcoded `HOST` in `server.ts` and `transports.ts` | `[unverified]` |
+| 6 | **HITL gate before irreversibility** — single-user self-approval is required before a task can transition to `done` | `evaluateHitl()` in `hitl/gate.ts` + `POST /tasks/:id/hitl-approve` + status-transition guard in `updateTaskStatus` (v0.1.1) | `[passed]` (v0.1.1) |
 
 ---
 
@@ -145,7 +147,7 @@ Key file: `packages/core/src/audit/service.ts`
 
 ### 2. Task + HITL Gate — 4-axis triggers
 
-Tasks carry a `complexity` axis (`trivial | standard | complex | critical`). HITL evaluation combines four dimensions: **irreversibility**, **blast_radius**, **complexity**, and **verify_fail**. Any axis over its threshold flips the task into `hitl_wait` status — and only `POST /tasks/:id/hitl-approve` unblocks it.
+Tasks carry a `complexity` axis (`trivial | standard | complex | critical`). HITL evaluation combines four dimensions: **irreversibility**, **blast_radius**, **complexity**, and **verify_fail**. Any axis over its threshold flips the task into `hitl_wait` status. The operator (you — gijun-ai is single-user) must explicitly call `POST /tasks/:id/hitl-approve` before irreversible execution proceeds. This is a self-approval speed-bump against a forgetful runaway agent, not multi-party governance; fork the project if you need separation-of-duties.
 
 Key files: `packages/core/src/task/service.ts`, `packages/core/src/hitl/gate.ts`
 
@@ -214,7 +216,7 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 |--------|------|:----:|-------------|
 | GET | `/health` | — | Liveness probe + version. |
 
-### `/tasks` — governance tasks
+### `/tasks` — tracked tasks
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
@@ -314,7 +316,7 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 
 | Tool | Backing route | Purpose |
 |------|---------------|---------|
-| `list_tasks` | `GET /tasks` | List governance tasks. |
+| `list_tasks` | `GET /tasks` | List tracked tasks. |
 | `get_task` | `GET /tasks/:id` | Fetch one task. |
 | `tail_audit` | `GET /audit?n=N` | Last N audit events. |
 | `verify_audit_integrity` | `GET /audit/integrity-check` | Report broken hash links. |
@@ -346,17 +348,40 @@ Excluded from v0.1 (available via REST only): playbook CRUD beyond GET, incident
 - **Fail-closed startup** — server exits with code 1 if `AGENTGUARD_TOKEN` is absent. No default token, no dev bypass.
 - **Local-only binding** — `HOST = '127.0.0.1'` in `server.ts`. Not a configuration knob.
 - **Two-token separation** — `AGENTGUARD_TOKEN` (REST) and `AGENTGUARD_MCP_TOKEN` (MCP HTTP) are independent, so an MCP-layer leak does not grant direct REST access.
-- **SHA-256 hash chain** — `content_hash = sha256(original_hash + canonical(event))`; `chain_hash = sha256(prev_chain_hash + content_hash)`. Deterministic canonical JSON ensures reproducibility.
+- **SHA-256 hash chain** — `content_hash = sha256(original_hash + canonical(event))`; `chain_hash = sha256(prev_chain_hash + content_hash)`. Canonical JSON uses recursive key sorting (see `packages/core/src/audit/chain.ts:5-19`); **not RFC 8785 JCS** — no number or Unicode normalization. Reproducible for same logical JSON with key-order differences, including nested objects; does NOT canonicalize `1.0` vs `1` or NFC/NFD Unicode forms.
 - **Redaction-independent integrity** — `original_hash` is frozen at insert; chain verification uses it. `payload` can be blanked for compliance without breaking the chain.
 - **Append-only** — no DELETE or UPDATE on `audit_events` anywhere in the codebase.
 - **Single connection + WAL** — node:sqlite with `journal_mode=WAL`; the `beginAudit*` / `commit` helpers use atomic transactions for promote/HITL-approve flows.
-- **Schema chain preflight** — the server refuses to start if `schema_migrations` does not list every migration in the expected order (`001_initial → 002_original_hash → 003_original_hash_type → 004_cost_budget`).
+- **Schema chain preflight** — the server refuses to start if `schema_migrations` does not list every migration in the expected order (`001_initial → 002_original_hash → 003_original_hash_type → 004_cost_budget → 005_policy_eval_index`).
 
 ---
 
 ## OWASP ASI mapping
 
 OWASP's Agentic Security Initiative top-10 mapped to this codebase. Compliance here is **scoped to a solo-developer local instance** — ASI coverage is partial and listed as a design target, not a certification.
+
+### Verification status summary
+
+Each ASI claim below carries a verification label so readers know which claims are test-asserted and which are design intent.
+
+| Item | Status | Notes |
+|------|:------:|-------|
+| ASI01 Prompt Injection | `[passed]` | HITL gate enforced (`hitl-enforcement.test.ts`) + policy engine `deny` effect |
+| ASI02 Insecure Output Handling | `[passed]` | SHA-256 audit chain, `audit-chain.test.ts`, `chain.test.ts` |
+| ASI03 Training Data Poisoning | `[out of scope]` | Upstream model hygiene is the provider's responsibility |
+| ASI04 Model DoS | `[pending E2E]` | rate_limit advisory check + budget advisory status — **no end-to-end blocking test** (v0.2 roadmap) |
+| ASI05 Supply Chain | `[pending]` | `pnpm-lock.yaml` pinned, no automated SBOM / Dependabot yet (v0.2 roadmap) |
+| ASI06 Sensitive Info Disclosure | `[passed]` | `redactPayload` + `original_hash`-based chain verification |
+| ASI07 Insecure Plugin Design | `[passed]` | Two independent tokens (REST + MCP) — `middleware/auth.ts`, `transports.ts` |
+| ASI08 Excessive Agency | `[passed]` (v0.1.1) | `hitl-enforcement.test.ts`, `task-atomicity.test.ts` — **was documented but not enforced in v0.1.0** |
+| ASI09 Overreliance | `[passed]` | `preflight_check` and `check_budget` return advisory-only results; unit tests cover each path |
+| ASI10 Model Theft | `[out of scope]` | Model weights not stored; prompt/response storage threat model is host physical access |
+
+**Label legend**:
+- `[passed]` — an automated test in this repository asserts the claim.
+- `[pending E2E]` — unit tests exist but end-to-end integration that exercises the claim is on the v0.2 roadmap.
+- `[unverified]` — no test currently asserts the specific claim; consumers should verify independently.
+- `[out of scope]` — explicitly not addressed by this tool; listed for ASI coverage completeness.
 
 ### ASI01 — Prompt Injection
 
@@ -375,7 +400,7 @@ OWASP's Agentic Security Initiative top-10 mapped to this codebase. Compliance h
 
 ### ASI04 — Model Denial of Service
 
-**Countermeasure**: rate-limit field on standard policies + advisory cost budget. DoS by runaway token cost is detected at `warning → critical → over_budget` and surfaces in the audit log automatically.
+**Countermeasure**: advisory rate-limit check in `evaluate()` (1-min window count — see `packages/core/src/policy/engine.ts:157-168`) + advisory cost budget. **Consumer enforces actual request blocking** — the server does not return HTTP 429 automatically; callers read `PolicyResult = 'rate_limited'` and decide. DoS by runaway token cost is detected at `warning → critical → over_budget` and surfaces in the audit log automatically.
 **Modules**: `packages/core/src/policy/engine.ts`, `packages/core/src/tracer/service.ts`
 
 ### ASI05 — Supply Chain Vulnerabilities
@@ -428,6 +453,8 @@ These are honest scope calls, not oversights. They will move out of this list on
 
 ## Roadmap
 
+Level-based public status framework and the L2 "reference-only public" Definition of Done checklist are in [`docs/public-status-dod.md`](./docs/public-status-dod.md). See [`docs/adoption-scenarios.md`](./docs/adoption-scenarios.md) for a by-scenario fit matrix (✓ personal learning / ✗ team adoption / etc.).
+
 ### v0.2 (next)
 
 - Playbook CRUD in MCP
@@ -437,13 +464,20 @@ These are honest scope calls, not oversights. They will move out of this list on
 - `packages/web` read-only dashboard (Vite + shadcn/ui)
 - JSONL export of audit log for external retention
 
-### v0.3 (later)
+### v0.3+ (long-term, may never ship)
 
-- Multi-instance mode with leader-elected audit replication
-- Team mode with per-user tokens and RBAC
 - Plugin API for custom HITL axes
 - LangChain / Mastra / other-framework adapters
 - Continuous integration of OWASP ASI checks
+
+### Out of scope (fork required)
+
+gijun-ai is a single-user tool. The following are **not on the roadmap** — if you need them, fork the project:
+
+- Multi-instance mode with leader-elected audit replication
+- Team mode with per-user tokens and RBAC
+- SaaS / cloud hosting
+- Organization-level billing
 
 ### Not on the roadmap
 
@@ -452,6 +486,8 @@ Cloud-hosted SaaS, organization-level billing, model hosting, collaborative edit
 ---
 
 ## Development
+
+Contributions are scoped across five axes — Branding (A) / Reliability (B) / Authority (C) / Operations (D) / Legal (E). See [`docs/project-framework.md`](./docs/project-framework.md) for axis boundary rules. A well-scoped PR touches one axis. Legal/license/PII considerations live in [`docs/legal.md`](./docs/legal.md). Contribution workflow: see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ### Layout
 
