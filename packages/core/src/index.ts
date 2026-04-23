@@ -14,8 +14,13 @@ export {
   searchKnowledge, createKnowledgeItem, promoteCandidate, listKnowledge
 } from './knowledge/retriever.js'
 
-export { evaluateHitl, describeHitlTrigger } from './hitl/gate.js'
-export type { HitlTrigger, ActionContext } from './hitl/gate.js'
+export { evaluateHitl, describeHitlTrigger, evaluateHitlForTask } from './hitl/gate.js'
+export type { HitlTrigger, ActionContext, TaskHitlInput, TaskHitlDecision, TaskHitlTriggerPayload } from './hitl/gate.js'
+
+export { withTxAndAudit } from './lib/tx.js'
+export { ErrorCode, CodedError } from './lib/error-codes.js'
+export { LIST_MAX_LIMIT, LIST_DEFAULT_LIMIT, POLICY_EVAL_SAFE_CAP, HITL_RULE_VERSION } from './lib/limits.js'
+export { PACKAGE_ROOT, MIGRATIONS_DIR } from './lib/paths.js'
 
 export { shouldVerify, getVerifyMode, recordVerification } from './verify/strategy.js'
 

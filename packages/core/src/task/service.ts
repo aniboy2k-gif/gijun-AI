@@ -1,6 +1,9 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
-import { appendAuditEvent } from '../audit/service.js'
+import { withTxAndAudit } from '../lib/tx.js'
+import { CodedError, ErrorCode } from '../lib/error-codes.js'
+import { evaluateHitlForTask } from '../hitl/gate.js'
+import type { AuditEventInput } from '../audit/service.js'
 
 export const TaskSchema = z.object({
   title: z.string().min(1),
@@ -9,6 +12,11 @@ export const TaskSchema = z.object({
   project: z.string().optional(),
   tags: z.array(z.string()).default([]),
   aiContext: z.record(z.unknown()).default({}),
+  // Optional HITL context — present values improve risk judgement; missing values
+  // may escalate `complex` complexity to HITL under strict mode (see evaluateHitlForTask).
+  toolName: z.string().optional(),
+  actionType: z.enum(['read', 'write', 'execute', 'delete']).optional(),
+  resource: z.string().optional(),
 })
 
 export const TaskStepSchema = z.object({
@@ -45,42 +53,93 @@ type TaskRow = {
 
 export function createTask(input: TaskInput): number {
   const validated = TaskSchema.parse(input)
-  const db = getDb()
 
-  const result = db.prepare(`
-    INSERT INTO tasks (title, description, complexity, project, tags, ai_context)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    validated.title,
-    validated.description ?? null,
-    validated.complexity,
-    validated.project ?? null,
-    JSON.stringify(validated.tags),
-    JSON.stringify(validated.aiContext),
-  )
+  const decision = evaluateHitlForTask({
+    complexity: validated.complexity,
+    ...(validated.toolName !== undefined ? { toolName: validated.toolName } : {}),
+    ...(validated.actionType !== undefined ? { actionType: validated.actionType } : {}),
+    ...(validated.resource !== undefined ? { resource: validated.resource } : {}),
+  })
 
-  const id = result.lastInsertRowid as number
-  appendAuditEvent({ eventType: 'task.create', action: `created task: ${validated.title}`, resourceType: 'task', resourceId: String(id) })
-  return id
+  return withTxAndAudit<number>(db => {
+    const result = db.prepare(`
+      INSERT INTO tasks
+        (title, description, complexity, project, tags, ai_context, hitl_required, hitl_trigger)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      validated.title,
+      validated.description ?? null,
+      validated.complexity,
+      validated.project ?? null,
+      JSON.stringify(validated.tags),
+      JSON.stringify(validated.aiContext),
+      decision.hitlRequired ? 1 : 0,
+      JSON.stringify(decision.trigger),
+    )
+    const id = result.lastInsertRowid as number
+    const audit: AuditEventInput = {
+      eventType: 'task.create',
+      action: `created task: ${validated.title}`,
+      resourceType: 'task',
+      resourceId: String(id),
+      payload: { hitlRequired: decision.hitlRequired, axes: decision.trigger.axes },
+    }
+    return { result: id, audit }
+  })
 }
 
 export function updateTaskStatus(
   id: number,
   status: 'pending' | 'in_progress' | 'hitl_wait' | 'done' | 'cancelled',
 ): void {
-  getDb().prepare(`
-    UPDATE tasks SET status = ?, updated_at = datetime('now') WHERE id = ?
-  `).run(status, id)
-  appendAuditEvent({ eventType: 'task.status_change', action: `task ${id} → ${status}`, resourceType: 'task', resourceId: String(id), taskId: id })
+  const db = getDb()
+  const current = db.prepare(
+    'SELECT hitl_required, hitl_approved_at FROM tasks WHERE id = ?',
+  ).get(id) as { hitl_required: number; hitl_approved_at: string | null } | undefined
+
+  if (!current) {
+    throw new CodedError(ErrorCode.NOT_FOUND, `Task ${id} not found`)
+  }
+
+  if (status === 'done' && current.hitl_required === 1 && current.hitl_approved_at === null) {
+    throw new CodedError(
+      ErrorCode.HITL_REQUIRED,
+      `Task ${id} requires HITL approval before transitioning to 'done'`,
+    )
+  }
+
+  withTxAndAudit<void>(txDb => {
+    txDb.prepare(`
+      UPDATE tasks SET status = ?, updated_at = datetime('now') WHERE id = ?
+    `).run(status, id)
+    const audit: AuditEventInput = {
+      eventType: 'task.status_change',
+      action: `task ${id} → ${status}`,
+      resourceType: 'task',
+      resourceId: String(id),
+      taskId: id,
+    }
+    return { result: undefined, audit }
+  })
 }
 
 export function approveHitl(id: number): void {
-  getDb().prepare(`
-    UPDATE tasks
-    SET hitl_approved_at = datetime('now'), status = 'in_progress', updated_at = datetime('now')
-    WHERE id = ?
-  `).run(id)
-  appendAuditEvent({ eventType: 'task.hitl_approved', actor: 'human', action: `HITL approved task ${id}`, resourceType: 'task', resourceId: String(id), taskId: id })
+  withTxAndAudit<void>(db => {
+    db.prepare(`
+      UPDATE tasks
+      SET hitl_approved_at = datetime('now'), status = 'in_progress', updated_at = datetime('now')
+      WHERE id = ?
+    `).run(id)
+    const audit: AuditEventInput = {
+      eventType: 'task.hitl_approved',
+      actor: 'human',
+      action: `HITL approved task ${id}`,
+      resourceType: 'task',
+      resourceId: String(id),
+      taskId: id,
+    }
+    return { result: undefined, audit }
+  })
 }
 
 export function addTaskStep(input: TaskStepInput): number {
