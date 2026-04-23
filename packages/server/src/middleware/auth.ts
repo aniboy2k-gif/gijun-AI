@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import { safeTokenCompare } from '@gijun-ai/core'
 
 const TOKEN = process.env.AGENTGUARD_TOKEN
 
@@ -15,8 +16,9 @@ export function requireToken(req: Request, res: Response, next: NextFunction): v
     res.status(503).json({ error: 'Server not configured: AGENTGUARD_TOKEN missing' })
     return
   }
-  const provided = req.headers['x-agentguard-token']
-  if (provided !== TOKEN) {
+  const raw = req.headers['x-agentguard-token']
+  const provided = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined
+  if (!safeTokenCompare(provided, TOKEN)) {
     res.status(401).json({ error: 'Unauthorized: invalid or missing X-AgentGuard-Token' })
     return
   }

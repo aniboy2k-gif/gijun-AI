@@ -7,6 +7,7 @@ import type { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import express, { type Request, type Response } from 'express'
+import { safeTokenCompare } from '@gijun-ai/core'
 
 const MAX_SESSIONS = 10
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000  // 30 min
@@ -49,8 +50,9 @@ export async function startHttp(
   cleanupTimer.unref?.()
 
   app.post('/mcp', async (req: Request, res: Response) => {
-    // Auth
-    if (req.headers['x-agentguard-mcp-token'] !== token) {
+    const raw = req.headers['x-agentguard-mcp-token']
+    const provided = typeof raw === 'string' ? raw : Array.isArray(raw) ? raw[0] : undefined
+    if (!safeTokenCompare(provided, token)) {
       res.status(401).json({ error: 'Unauthorized' })
       return
     }

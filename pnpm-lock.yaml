@@ -36,6 +36,9 @@ importers:
 
   packages/mcp-server:
     dependencies:
+      '@gijun-ai/core':
+        specifier: workspace:*
+        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.11.4
         version: 1.29.0(zod@3.25.76)

@@ -1,10 +1,24 @@
 import path from 'node:path'
 import { existsSync } from 'node:fs'
 
+// CJS/ESM compat: __dirname is defined in tsup's CJS bundle and in tsx's
+// CJS emulation. For pure ESM runtimes we fall back to cwd — callers should
+// override via AGENTGUARD_MIGRATIONS_PATH in that case.
+const HERE: string = (() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - __dirname exists at runtime in CJS / tsx
+    return typeof __dirname !== 'undefined' ? (__dirname as string) : process.cwd()
+  } catch {
+    return process.cwd()
+  }
+})()
+
 function resolvePackageRoot(): string {
   const candidates = [
-    path.resolve(__dirname, '..'),
-    path.resolve(__dirname, '../..'),
+    path.resolve(HERE, '..'),
+    path.resolve(HERE, '../..'),
+    path.resolve(HERE, '../../..'),
   ]
   for (const candidate of candidates) {
     if (existsSync(path.join(candidate, 'package.json'))) {

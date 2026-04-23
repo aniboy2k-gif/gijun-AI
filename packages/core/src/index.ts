@@ -22,6 +22,7 @@ export { ErrorCode, CodedError } from './lib/error-codes.js'
 export { LIST_MAX_LIMIT, LIST_DEFAULT_LIMIT, POLICY_EVAL_SAFE_CAP, HITL_RULE_VERSION } from './lib/limits.js'
 export { PACKAGE_ROOT, MIGRATIONS_DIR } from './lib/paths.js'
 export { toPublicFieldErrors } from './lib/error-mask.js'
+export { safeTokenCompare } from './lib/crypto-compare.js'
 
 export { shouldVerify, getVerifyMode, recordVerification } from './verify/strategy.js'
 

@@ -11,7 +11,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm --filter @gijun-ai/server dev",
-    "init": "node --import=tsx/esm packages/core/src/cli/init.ts",
+    "init": "node --import=tsx/esm packages/core/src/cli/init.mts",
     "audit:verify": "node --input-type=module -e \"import { runVerifyChainCli } from '@gijun-ai/core'; runVerifyChainCli()\"",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test"

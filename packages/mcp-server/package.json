@@ -13,6 +13,7 @@
     "start:http": "AGENTGUARD_MCP_TRANSPORT=http node --import=tsx/esm src/index.ts"
   },
   "dependencies": {
+    "@gijun-ai/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.11.4",
     "express": "^5.1.0",
     "zod": "^3.24.3",
