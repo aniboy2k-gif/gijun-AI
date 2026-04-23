@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a defect in gijun-ai
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you file**: gijun-ai is a personal single-user tool. If your bug report
+        describes a team/multi-user scenario, please note — those paths are out of scope
+        and the "fix" is likely "fork required". See `CONTRIBUTING.md`.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `git rev-parse HEAD` or the git tag you're running (e.g. `v0.1.2` or `main@abc1234`).
+      placeholder: v0.1.2
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Output of `node --version`.
+      placeholder: v22.10.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux (Ubuntu / Debian / other)
+        - Windows (note — untested upstream)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do and what went wrong? Include the exact command, HTTP request, or MCP tool call if applicable.
+      placeholder: |
+        1. Ran `pnpm install && pnpm build`
+        2. Started server with `AGENTGUARD_TOKEN=xxx node packages/server/dist/server.js`
+        3. Called `POST /tasks` with `{ title: "x", complexity: "critical" }`
+        4. Got 500 Internal Server Error instead of 201 with a task id
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / stack trace
+      description: Paste the relevant `console.error` output, stack trace, or audit log entry (redact tokens).
+      render: shell

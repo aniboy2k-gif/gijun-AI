@@ -1,0 +1,103 @@
+# Claim-to-code mapping for gijun-ai
+#
+# Purpose: prevent the claim-to-code drift that occurred in v0.1.0 — the
+# README documented an ASI08 HITL gate that was not enforced in code. When
+# README.md mentions a claim below, this mapping tells `claim-check` CI
+# which test files and source files MUST exist to back the claim.
+#
+# Update rules:
+#   - Adding a new ASI/contract claim to README: add an entry here and a
+#     matching test file under packages/core/src/__tests__/
+#   - Demoting a claim (e.g. `[passed]` → `[pending E2E]`): keep required
+#     files; downgrade the README label only.
+#   - Removing a claim: remove both the README section and this entry.
+
+asi_claims:
+  ASI01:
+    aka: "Prompt Injection"
+    required_tests:
+      - packages/core/src/__tests__/hitl-enforcement.test.ts
+    required_files:
+      - packages/core/src/hitl/gate.ts
+      - packages/core/src/policy/engine.ts
+  ASI02:
+    aka: "Insecure Output Handling"
+    required_tests:
+      - packages/core/src/__tests__/audit-chain.test.ts
+      - packages/core/src/__tests__/chain.test.ts
+    required_files:
+      - packages/core/src/audit/chain.ts
+      - packages/core/src/audit/service.ts
+  ASI03:
+    aka: "Training Data Poisoning"
+    scope: out_of_scope
+  ASI04:
+    aka: "Model DoS"
+    status: pending_e2e
+    required_files:
+      - packages/core/src/policy/engine.ts
+      - packages/core/src/tracer/service.ts
+  ASI05:
+    aka: "Supply Chain Vulnerabilities"
+    status: pending
+    required_files:
+      - pnpm-lock.yaml
+  ASI06:
+    aka: "Sensitive Information Disclosure"
+    required_tests:
+      - packages/core/src/__tests__/audit-chain.test.ts
+    required_files:
+      - packages/core/src/audit/service.ts
+  ASI07:
+    aka: "Insecure Plugin Design"
+    required_files:
+      - packages/server/src/middleware/auth.ts
+      - packages/mcp-server/src/transports.ts
+  ASI08:
+    aka: "Excessive Agency"
+    required_tests:
+      - packages/core/src/__tests__/hitl-enforcement.test.ts
+      - packages/core/src/__tests__/task-atomicity.test.ts
+    required_files:
+      - packages/core/src/hitl/gate.ts
+      - packages/core/src/task/service.ts
+  ASI09:
+    aka: "Overreliance"
+    required_files:
+      - packages/server/src/routes/preflight.ts
+      - packages/core/src/tracer/service.ts
+  ASI10:
+    aka: "Model Theft"
+    scope: out_of_scope
+
+contracts:
+  "Append-only audit":
+    required_tests:
+      - packages/core/src/__tests__/audit-chain.test.ts
+    required_files:
+      - packages/core/src/audit/service.ts
+  "Full migration chain preflight":
+    required_tests:
+      - packages/core/src/__tests__/migrations-chain.test.ts
+    required_files:
+      - packages/server/src/server.ts
+  "Content-addressable redaction":
+    required_tests:
+      - packages/core/src/__tests__/audit-chain.test.ts
+    required_files:
+      - packages/core/src/audit/service.ts
+  "Fail-closed authentication":
+    required_files:
+      - packages/server/src/middleware/auth.ts
+      - packages/server/src/server.ts
+  "Local-only binding":
+    required_files:
+      - packages/server/src/server.ts
+      - packages/mcp-server/src/transports.ts
+  "HITL gate before irreversibility":
+    required_tests:
+      - packages/core/src/__tests__/hitl-enforcement.test.ts
+      - packages/core/src/__tests__/task-atomicity.test.ts
+    required_files:
+      - packages/core/src/hitl/gate.ts
+      - packages/core/src/task/service.ts

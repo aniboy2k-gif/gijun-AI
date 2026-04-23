@@ -1,0 +1,120 @@
+name: claim-check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+      - "README.ko.md"
+      - "CHANGELOG.md"
+      - "packages/**"
+      - ".github/claim-map.yml"
+      - ".github/workflows/claim-check.yml"
+  pull_request:
+    paths:
+      - "README.md"
+      - "README.ko.md"
+      - "CHANGELOG.md"
+      - "packages/**"
+      - ".github/claim-map.yml"
+      - ".github/workflows/claim-check.yml"
+
+jobs:
+  verify-claims:
+    name: Verify README claims match code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Verify ASI claim mappings
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAP=".github/claim-map.yml"
+          FAIL=0
+
+          echo "=== Verifying ASI claims referenced in README.md ==="
+          for id in $(yq '.asi_claims | keys | .[]' "$MAP"); do
+            id="${id//\"/}"
+            scope=$(yq ".asi_claims.${id}.scope // \"\"" "$MAP" | tr -d '"')
+            if [ "$scope" = "out_of_scope" ]; then
+              echo "  $id: [out of scope] — skipping file checks"
+              continue
+            fi
+
+            if ! grep -q "$id" README.md; then
+              echo "  $id: not referenced in README.md — skipping"
+              continue
+            fi
+
+            # required_tests
+            while IFS= read -r t; do
+              [ -z "$t" ] && continue
+              if [ ! -f "$t" ]; then
+                echo "  ❌ $id claim in README but required test missing: $t"
+                FAIL=1
+              else
+                echo "  ✓ $id → $t"
+              fi
+            done < <(yq ".asi_claims.${id}.required_tests // [] | .[]" "$MAP" | tr -d '"')
+
+            # required_files
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              if [ ! -f "$f" ]; then
+                echo "  ❌ $id claim in README but required file missing: $f"
+                FAIL=1
+              fi
+            done < <(yq ".asi_claims.${id}.required_files // [] | .[]" "$MAP" | tr -d '"')
+          done
+
+          echo ""
+          echo "=== Verifying architecture contracts referenced in README.md ==="
+          while IFS= read -r contract; do
+            [ -z "$contract" ] && continue
+            if ! grep -q "$contract" README.md; then
+              echo "  $contract: not referenced in README.md — skipping"
+              continue
+            fi
+            while IFS= read -r t; do
+              [ -z "$t" ] && continue
+              if [ ! -f "$t" ]; then
+                echo "  ❌ Contract '$contract' claimed but test missing: $t"
+                FAIL=1
+              else
+                echo "  ✓ $contract → $t"
+              fi
+            done < <(yq ".contracts.\"${contract}\".required_tests // [] | .[]" "$MAP" | tr -d '"')
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              if [ ! -f "$f" ]; then
+                echo "  ❌ Contract '$contract' claimed but file missing: $f"
+                FAIL=1
+              fi
+            done < <(yq ".contracts.\"${contract}\".required_files // [] | .[]" "$MAP" | tr -d '"')
+          done < <(yq '.contracts | keys | .[]' "$MAP" | tr -d '"')
+
+          echo ""
+          if [ "$FAIL" -ne 0 ]; then
+            echo "claim-check FAILED: README claims must have corresponding tests/files."
+            echo "Either remove the claim from README.md or add the missing file(s)."
+            exit 1
+          fi
+          echo "claim-check PASSED: all README claims are backed by existing code."
+
+      - name: Verify CHANGELOG has entry for current package.json version
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if ! grep -q "^## \[$PKG_VERSION\]" CHANGELOG.md; then
+            echo "❌ CHANGELOG.md missing entry for v$PKG_VERSION"
+            echo "   Expected a line: ## [$PKG_VERSION] — <date>"
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md has entry for v$PKG_VERSION"

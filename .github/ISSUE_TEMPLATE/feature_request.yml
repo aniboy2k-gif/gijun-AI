@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you file**: gijun-ai deliberately stays single-user. Features that require
+        multi-user auth, RBAC, SaaS hosting, or team collaboration are **out of scope** —
+        fork instead. See `CONTRIBUTING.md` §"What is out of scope".
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / use case
+      description: What are you trying to accomplish? What's missing or frustrating today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: How should gijun-ai behave once this feature exists? Be concrete.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: axis
+    attributes:
+      label: Framework axis
+      description: Which axis does this touch? (See `docs/project-framework.md`.)
+      options:
+        - A — Branding & documentation
+        - B — Reliability & verification (code+tests)
+        - C — Authority & policy architecture
+        - D — Public-operation readiness (CI / templates)
+        - E — Legal & external dependencies
+        - Multiple — needs splitting
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you looked at Langfuse, Arize Phoenix, OpenLLMetry, or similar? Why does gijun-ai need to solve this directly rather than suggesting you use one of those?
+
+  - type: textarea
+    id: scope-check
+    attributes:
+      label: Scope sanity check
+      description: Is this compatible with gijun-ai's **single-user** scope? If it requires multi-user semantics, please describe the fork path instead.
+    validations:
+      required: true
