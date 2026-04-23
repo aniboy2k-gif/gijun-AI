@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { createHash } from 'node:crypto'
 import { getDb } from '../db/client.js'
-import { appendAuditEvent } from '../audit/service.js'
+import { appendAuditEvent, insertAuditEventInTx } from '../audit/service.js'
 
 export const IncidentSchema = z.object({
   title: z.string().min(1),
@@ -79,12 +79,28 @@ export function listCandidatePatterns(): unknown[] {
 
 export function approvePatternPromotion(patternHash: string): void {
   const db = getDb()
-  db.prepare(`
-    UPDATE incident_patterns
-    SET promotion_status = 'promoted', human_approved = 1, promoted_at = datetime('now')
-    WHERE pattern_hash = ?
-  `).run(patternHash)
-  appendAuditEvent({ eventType: 'incident.pattern_promoted', actor: 'human', action: `pattern promoted: ${patternHash}`, resourceType: 'incident_pattern', resourceId: patternHash })
+  const pattern = db.prepare("SELECT promotion_status FROM incident_patterns WHERE pattern_hash = ?").get(patternHash) as { promotion_status: string } | undefined
+  if (!pattern) throw Object.assign(new Error(`Pattern not found: ${patternHash}`), { code: 'NOT_FOUND' })
+  if (pattern.promotion_status === 'promoted') throw Object.assign(new Error('Pattern already promoted'), { code: 'ALREADY_PROMOTED' })
+
+  const createdAt = new Date().toISOString()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.prepare(`
+      UPDATE incident_patterns
+      SET promotion_status = 'promoted', human_approved = 1, promoted_at = datetime('now')
+      WHERE pattern_hash = ?
+    `).run(patternHash)
+    insertAuditEventInTx(db, {
+      eventType: 'incident.pattern_promoted', actor: 'human',
+      action: `pattern promoted: ${patternHash}`,
+      resourceType: 'incident_pattern', resourceId: patternHash,
+    }, createdAt)
+    db.exec('COMMIT')
+  } catch (e) {
+    db.exec('ROLLBACK')
+    throw e
+  }
 }
 
 export function listIncidents(opts: { status?: string; severity?: string; limit?: number } = {}): unknown[] {

@@ -2,6 +2,41 @@ import { z } from 'zod'
 import { getDb } from '../db/client.js'
 import { computeContentHash, computeChainHash, getGenesisHash } from './chain.js'
 
+// Patterns that match common API key / token formats.
+// Applied to string values inside payload before storage.
+const REDACT_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9_-]{20,}/g,
+  /sk-ant-[A-Za-z0-9_-]{20,}/g,
+  /Bearer\s+[A-Za-z0-9._-]{20,}/gi,
+  /ghp_[A-Za-z0-9]{36}/g,          // GitHub personal access tokens
+]
+const REDACTED_PLACEHOLDER = '[REDACTED]'
+
+function redactString(s: string): string {
+  let result = s
+  for (const pattern of REDACT_PATTERNS) {
+    result = result.replace(pattern, REDACTED_PLACEHOLDER)
+  }
+  return result
+}
+
+function redactValue(value: unknown): unknown {
+  if (typeof value === 'string') return redactString(value)
+  if (Array.isArray(value)) return value.map(redactValue)
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = redactValue(v)
+    }
+    return out
+  }
+  return value
+}
+
+export function redactPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return redactValue(payload) as Record<string, unknown>
+}
+
 export const AuditEventSchema = z.object({
   eventType: z.string().min(1),
   actor: z.enum(['ai', 'human', 'system']).default('ai'),
@@ -16,49 +51,122 @@ export const AuditEventSchema = z.object({
 
 export type AuditEventInput = z.input<typeof AuditEventSchema>
 
-export function appendAuditEvent(input: AuditEventInput): number {
+/**
+ * Internal: INSERT only — no own transaction. Must be called inside an active
+ * BEGIN IMMEDIATE transaction so it shares the caller's write lock and commit.
+ */
+export function insertAuditEventInTx(
+  db: ReturnType<typeof getDb>,
+  input: AuditEventInput,
+  createdAt: string,
+): number {
   const validated = AuditEventSchema.parse(input)
-  const db = getDb()
-  const createdAt = new Date().toISOString()
-
   const lastRow = db
     .prepare('SELECT chain_hash FROM audit_events ORDER BY id DESC LIMIT 1')
     .get() as { chain_hash: string } | undefined
-
   const prevHash = lastRow?.chain_hash ?? getGenesisHash()
 
-  const contentHash = computeContentHash({
+  const originalHash = computeContentHash({
     eventType: validated.eventType,
     actor: validated.actor,
     action: validated.action,
     payload: validated.payload,
     createdAt,
   })
-
-  const chainHash = computeChainHash(prevHash, contentHash)
+  const redactedPayload = redactPayload(validated.payload)
+  const contentHash = computeContentHash({
+    eventType: validated.eventType,
+    actor: validated.actor,
+    action: validated.action,
+    payload: redactedPayload,
+    createdAt,
+  })
+  const chainHash = computeChainHash(prevHash, originalHash)
 
   const result = db.prepare(`
     INSERT INTO audit_events
-      (prev_hash, content_hash, chain_hash, event_type, actor, actor_model,
+      (prev_hash, original_hash, original_hash_type, content_hash, chain_hash,
+       event_type, actor, actor_model,
        task_id, resource_type, resource_id, action, payload, ip_addr, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    prevHash,
-    contentHash,
-    chainHash,
-    validated.eventType,
-    validated.actor,
-    validated.actorModel ?? null,
-    validated.taskId ?? null,
-    validated.resourceType ?? null,
-    validated.resourceId ?? null,
-    validated.action,
-    JSON.stringify(validated.payload),
-    validated.ipAddr ?? null,
-    createdAt,
+    prevHash, originalHash, 'redaction_pre', contentHash, chainHash,
+    validated.eventType, validated.actor, validated.actorModel ?? null,
+    validated.taskId ?? null, validated.resourceType ?? null, validated.resourceId ?? null,
+    validated.action, JSON.stringify(redactedPayload), validated.ipAddr ?? null, createdAt,
   )
-
   return result.lastInsertRowid as number
+}
+
+export function appendAuditEvent(input: AuditEventInput): number {
+  const validated = AuditEventSchema.parse(input)
+  const db = getDb()
+  const createdAt = new Date().toISOString()
+
+  // BEGIN IMMEDIATE acquires a write lock upfront, preventing hash-chain fork
+  // when multiple processes read the same prevHash before either inserts.
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const lastRow = db
+      .prepare('SELECT chain_hash FROM audit_events ORDER BY id DESC LIMIT 1')
+      .get() as { chain_hash: string } | undefined
+
+    const prevHash = lastRow?.chain_hash ?? getGenesisHash()
+
+    // originalHash: computed from the unredacted payload.
+    // chain_hash uses this so that redaction policy changes don't invalidate the chain.
+    const originalHash = computeContentHash({
+      eventType: validated.eventType,
+      actor: validated.actor,
+      action: validated.action,
+      payload: validated.payload,
+      createdAt,
+    })
+
+    // Redact sensitive data before storage.
+    const redactedPayload = redactPayload(validated.payload)
+
+    // contentHash: hash of what is actually stored (post-redaction).
+    const contentHash = computeContentHash({
+      eventType: validated.eventType,
+      actor: validated.actor,
+      action: validated.action,
+      payload: redactedPayload,
+      createdAt,
+    })
+
+    const chainHash = computeChainHash(prevHash, originalHash)
+
+    const result = db.prepare(`
+      INSERT INTO audit_events
+        (prev_hash, original_hash, original_hash_type, content_hash, chain_hash,
+         event_type, actor, actor_model,
+         task_id, resource_type, resource_id, action, payload, ip_addr, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      prevHash,
+      originalHash,
+      'redaction_pre',   // new rows always carry semantic original_hash
+      contentHash,
+      chainHash,
+      validated.eventType,
+      validated.actor,
+      validated.actorModel ?? null,
+      validated.taskId ?? null,
+      validated.resourceType ?? null,
+      validated.resourceId ?? null,
+      validated.action,
+      JSON.stringify(redactedPayload),
+      validated.ipAddr ?? null,
+      createdAt,
+    )
+
+    db.exec('COMMIT')
+    return result.lastInsertRowid as number
+  } catch (e) {
+    db.exec('ROLLBACK')
+    throw e
+  }
 }
 
 export function tailAuditEvents(n = 20): unknown[] {

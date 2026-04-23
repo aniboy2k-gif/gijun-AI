@@ -4,6 +4,7 @@ import { computeChainHash, getGenesisHash } from './chain.js'
 type AuditRow = {
   id: number
   prev_hash: string
+  original_hash: string | null
   content_hash: string
   chain_hash: string
 }
@@ -16,7 +17,7 @@ export type VerifyResult = {
 
 export function verifyChain(): VerifyResult {
   const rows = getDb()
-    .prepare('SELECT id, prev_hash, content_hash, chain_hash FROM audit_events ORDER BY id ASC')
+    .prepare('SELECT id, prev_hash, original_hash, content_hash, chain_hash FROM audit_events ORDER BY id ASC')
     .all() as AuditRow[]
 
   const broken: VerifyResult['broken'] = []
@@ -26,7 +27,11 @@ export function verifyChain(): VerifyResult {
     if (row.prev_hash !== expectedPrevHash) {
       broken.push({ id: row.id, expected: expectedPrevHash, actual: row.prev_hash })
     }
-    const expectedChain = computeChainHash(row.prev_hash, row.content_hash)
+
+    // chain_hash is based on original_hash (pre-redaction).
+    // Rows created before migration 002 have original_hash = content_hash (initialized by migration).
+    const hashBase = row.original_hash ?? row.content_hash
+    const expectedChain = computeChainHash(row.prev_hash, hashBase)
     if (row.chain_hash !== expectedChain) {
       broken.push({ id: row.id, expected: expectedChain, actual: row.chain_hash })
     }
@@ -36,7 +41,8 @@ export function verifyChain(): VerifyResult {
   return { valid: broken.length === 0, total: rows.length, broken }
 }
 
-function main(): void {
+// CLI entry: run via the audit:verify script in root package.json
+export function runVerifyChainCli(): void {
   runMigrations()
   const result = verifyChain()
   if (result.valid) {
@@ -46,8 +52,4 @@ function main(): void {
     console.error(result.broken)
     process.exit(1)
   }
-}
-
-if (require.main === module) {
-  main()
 }

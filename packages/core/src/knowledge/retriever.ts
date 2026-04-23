@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
-import { appendAuditEvent } from '../audit/service.js'
+import { appendAuditEvent, insertAuditEventInTx } from '../audit/service.js'
 
 export const KnowledgeItemSchema = z.object({
   layer: z.enum(['global', 'project', 'incident', 'candidate']),
@@ -87,10 +87,24 @@ export function promoteCandidate(id: number): void {
   const item = db.prepare('SELECT * FROM knowledge_items WHERE id = ? AND layer = ?').get(id, 'candidate') as KnowledgeRow | undefined
   if (!item) throw new Error(`Candidate knowledge item ${id} not found`)
 
-  db.prepare(`
-    UPDATE knowledge_items SET layer = 'incident', updated_at = datetime('now') WHERE id = ?
-  `).run(id)
-  appendAuditEvent({ eventType: 'knowledge.promote', actor: 'human', action: `promoted candidate ${id} to incident layer`, resourceType: 'knowledge', resourceId: String(id) })
+  const already = db.prepare("SELECT id FROM knowledge_items WHERE id = ? AND layer = 'incident'").get(id)
+  if (already) throw Object.assign(new Error('Already promoted'), { code: 'ALREADY_PROMOTED' })
+
+  // Atomically update state and write audit log in the same transaction.
+  const createdAt = new Date().toISOString()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.prepare("UPDATE knowledge_items SET layer = 'incident', updated_at = datetime('now') WHERE id = ?").run(id)
+    insertAuditEventInTx(db, {
+      eventType: 'knowledge.promoted', actor: 'human',
+      action: `promoted candidate ${id} to incident layer`,
+      resourceType: 'knowledge', resourceId: String(id),
+    }, createdAt)
+    db.exec('COMMIT')
+  } catch (e) {
+    db.exec('ROLLBACK')
+    throw e
+  }
 }
 
 export function listKnowledge(layer?: string): KnowledgeRow[] {

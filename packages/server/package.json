@@ -1,0 +1,23 @@
+{
+  "name": "@gijun-ai/server",
+  "version": "0.1.0",
+  "description": "REST API server for the personal AI agent governance platform",
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --watch --import=tsx/esm src/server.ts",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@gijun-ai/core": "workspace:*",
+    "express": "^5.1.0",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

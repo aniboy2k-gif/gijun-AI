@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
 
@@ -29,11 +30,28 @@ export const VerificationSchema = z.object({
 
 export type VerificationInput = z.input<typeof VerificationSchema>
 
-export function shouldVerify(complexity: Complexity): boolean {
+// Deterministic sampling: same taskId always yields the same verify decision.
+// Uses AGENTGUARD_VERIFY_SEED to allow per-deployment tuning without code change.
+const VERIFY_SEED = process.env.AGENTGUARD_VERIFY_SEED ?? 'agentguard-verify-seed-v1'
+
+/**
+ * Returns true when the task should be verified.
+ * CONTRACT: callers must treat `false` as "skip verification" — do NOT proceed
+ * with unverified output for complex/critical tasks when shouldVerify returns false
+ * due to missing taskId; log the skip and route through manual review instead.
+ */
+export function shouldVerify(complexity: Complexity, taskId?: number): boolean {
   const rate = SAMPLING_RATE[complexity]
   if (rate === 0) return false
   if (rate === 1) return true
-  return Math.random() < rate
+  if (taskId === undefined) {
+    // taskId is required for deterministic sampling. Calling without it is a bug
+    // or a sign of an adversarial call — skip verification and warn.
+    console.warn('[agentguard] shouldVerify called without taskId — verification skipped')
+    return false
+  }
+  const hex = createHash('sha256').update(`${taskId}:${VERIFY_SEED}`).digest('hex')
+  return parseInt(hex.slice(0, 8), 16) % 100 < rate * 100
 }
 
 export function getVerifyMode(complexity: Complexity): VerifyMode {
