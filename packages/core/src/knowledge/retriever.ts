@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
 import { appendAuditEvent, insertAuditEventInTx } from '../audit/service.js'
+import { CodedError, ErrorCode } from '../lib/error-codes.js'
+import { LIST_MAX_LIMIT, LIST_DEFAULT_LIMIT } from '../lib/limits.js'
 
 export const KnowledgeItemSchema = z.object({
   layer: z.enum(['global', 'project', 'incident', 'candidate']),
@@ -85,10 +87,10 @@ export function createKnowledgeItem(input: KnowledgeItemInput): number {
 export function promoteCandidate(id: number): void {
   const db = getDb()
   const item = db.prepare('SELECT * FROM knowledge_items WHERE id = ? AND layer = ?').get(id, 'candidate') as KnowledgeRow | undefined
-  if (!item) throw new Error(`Candidate knowledge item ${id} not found`)
+  if (!item) throw new CodedError(ErrorCode.NOT_FOUND, `Candidate knowledge item ${id} not found`)
 
   const already = db.prepare("SELECT id FROM knowledge_items WHERE id = ? AND layer = 'incident'").get(id)
-  if (already) throw Object.assign(new Error('Already promoted'), { code: 'ALREADY_PROMOTED' })
+  if (already) throw new CodedError(ErrorCode.CONFLICT, 'Already promoted')
 
   // Atomically update state and write audit log in the same transaction.
   const createdAt = new Date().toISOString()
@@ -107,9 +109,14 @@ export function promoteCandidate(id: number): void {
   }
 }
 
-export function listKnowledge(layer?: string): KnowledgeRow[] {
-  if (layer) {
-    return getDb().prepare('SELECT * FROM knowledge_items WHERE layer = ? AND is_active = 1 ORDER BY updated_at DESC').all(layer) as KnowledgeRow[]
+export function listKnowledge(opts: { layer?: string; limit?: number } = {}): KnowledgeRow[] {
+  const limit = Math.min(opts.limit ?? LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT)
+  if (opts.layer) {
+    return getDb().prepare(
+      'SELECT * FROM knowledge_items WHERE layer = ? AND is_active = 1 ORDER BY updated_at DESC LIMIT ?',
+    ).all(opts.layer, limit) as KnowledgeRow[]
   }
-  return getDb().prepare('SELECT * FROM knowledge_items WHERE is_active = 1 ORDER BY layer, updated_at DESC').all() as KnowledgeRow[]
+  return getDb().prepare(
+    'SELECT * FROM knowledge_items WHERE is_active = 1 ORDER BY layer, updated_at DESC LIMIT ?',
+  ).all(limit) as KnowledgeRow[]
 }

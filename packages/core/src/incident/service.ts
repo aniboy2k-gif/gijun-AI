@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { createHash } from 'node:crypto'
 import { getDb } from '../db/client.js'
 import { appendAuditEvent, insertAuditEventInTx } from '../audit/service.js'
+import { CodedError, ErrorCode } from '../lib/error-codes.js'
+import { LIST_MAX_LIMIT, LIST_DEFAULT_LIMIT } from '../lib/limits.js'
 
 export const IncidentSchema = z.object({
   title: z.string().min(1),
@@ -71,17 +73,18 @@ function updatePatternCount(patternHash: string, summary: string): void {
   `).run(newCount, newCount, PROMOTION_THRESHOLD, patternHash)
 }
 
-export function listCandidatePatterns(): unknown[] {
+export function listCandidatePatterns(opts: { limit?: number } = {}): unknown[] {
+  const limit = Math.min(opts.limit ?? LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT)
   return getDb().prepare(`
-    SELECT * FROM incident_patterns WHERE promotion_status = 'candidate' ORDER BY occurrence_count DESC
-  `).all()
+    SELECT * FROM incident_patterns WHERE promotion_status = 'candidate' ORDER BY occurrence_count DESC LIMIT ?
+  `).all(limit)
 }
 
 export function approvePatternPromotion(patternHash: string): void {
   const db = getDb()
   const pattern = db.prepare("SELECT promotion_status FROM incident_patterns WHERE pattern_hash = ?").get(patternHash) as { promotion_status: string } | undefined
-  if (!pattern) throw Object.assign(new Error(`Pattern not found: ${patternHash}`), { code: 'NOT_FOUND' })
-  if (pattern.promotion_status === 'promoted') throw Object.assign(new Error('Pattern already promoted'), { code: 'ALREADY_PROMOTED' })
+  if (!pattern) throw new CodedError(ErrorCode.NOT_FOUND, `Pattern not found: ${patternHash}`)
+  if (pattern.promotion_status === 'promoted') throw new CodedError(ErrorCode.CONFLICT, 'Pattern already promoted')
 
   const createdAt = new Date().toISOString()
   db.exec('BEGIN IMMEDIATE')
@@ -111,7 +114,7 @@ export function listIncidents(opts: { status?: string; severity?: string; limit?
   if (opts.severity) { conditions.push('severity = ?'); values.push(opts.severity) }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
-  values.push(opts.limit ?? 50)
+  values.push(Math.min(opts.limit ?? LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT))
 
   return getDb().prepare(`SELECT * FROM incidents ${where} ORDER BY created_at DESC LIMIT ?`).all(...values)
 }

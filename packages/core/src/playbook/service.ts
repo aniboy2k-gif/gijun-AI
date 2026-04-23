@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
 import { appendAuditEvent } from '../audit/service.js'
+import { CodedError, ErrorCode } from '../lib/error-codes.js'
+import { LIST_MAX_LIMIT, LIST_DEFAULT_LIMIT } from '../lib/limits.js'
 
 export const PlaybookSchema = z.object({
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
@@ -50,7 +52,7 @@ export function createPlaybook(input: PlaybookInput): number {
 export function updatePlaybook(id: number, input: Partial<PlaybookInput>, changeNote?: string): void {
   const db = getDb()
   const existing = db.prepare('SELECT * FROM playbooks WHERE id = ?').get(id) as PlaybookRow | undefined
-  if (!existing) throw new Error(`Playbook ${id} not found`)
+  if (!existing) throw new CodedError(ErrorCode.NOT_FOUND, `Playbook ${id} not found`)
 
   db.prepare(`
     INSERT INTO playbook_versions (playbook_id, version, content, change_note)
@@ -76,12 +78,17 @@ export function updatePlaybook(id: number, input: Partial<PlaybookInput>, change
   appendAuditEvent({ eventType: 'playbook.update', action: `updated playbook id=${id}`, resourceType: 'playbook', resourceId: String(id) })
 }
 
-export function listPlaybooks(scope?: string): PlaybookRow[] {
+export function listPlaybooks(opts: { scope?: string; limit?: number } = {}): PlaybookRow[] {
   const db = getDb()
-  if (scope) {
-    return db.prepare('SELECT * FROM playbooks WHERE scope = ? AND is_active = 1 ORDER BY updated_at DESC').all(scope) as PlaybookRow[]
+  const limit = Math.min(opts.limit ?? LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT)
+  if (opts.scope) {
+    return db.prepare(
+      'SELECT * FROM playbooks WHERE scope = ? AND is_active = 1 ORDER BY updated_at DESC LIMIT ?',
+    ).all(opts.scope, limit) as PlaybookRow[]
   }
-  return db.prepare('SELECT * FROM playbooks WHERE is_active = 1 ORDER BY updated_at DESC').all() as PlaybookRow[]
+  return db.prepare(
+    'SELECT * FROM playbooks WHERE is_active = 1 ORDER BY updated_at DESC LIMIT ?',
+  ).all(limit) as PlaybookRow[]
 }
 
 export function getPlaybook(slugOrId: string | number): PlaybookRow | undefined {

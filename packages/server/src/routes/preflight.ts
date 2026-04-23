@@ -1,9 +1,17 @@
 import { Router, type RequestHandler } from 'express'
+import { z } from 'zod'
 import { requireToken } from '../middleware/auth.js'
 import { evaluatePolicy, evaluateHitl, describeHitlTrigger } from '@gijun-ai/core'
 import type { ActionContext } from '@gijun-ai/core'
 
 export const preflightRouter: ReturnType<typeof Router> = Router()
+
+const PreflightBody = z.object({
+  action: z.string().min(1).max(1024),
+  toolName: z.string().max(128).optional(),
+  actionType: z.enum(['read', 'write', 'execute', 'delete']).optional(),
+  complexity: z.enum(['trivial', 'standard', 'complex', 'critical']).optional(),
+})
 
 /**
  * POST /preflight — advisory pre-flight check combining policy + HITL evaluation.
@@ -12,13 +20,8 @@ export const preflightRouter: ReturnType<typeof Router> = Router()
  */
 const preflightHandler: RequestHandler = (req, res, next) => {
   try {
-    const { action, toolName, actionType, complexity } = req.body as {
-      action: string; toolName?: string
-      actionType?: 'read' | 'write' | 'execute' | 'delete'
-      complexity?: ActionContext['complexity']
-    }
+    const { action, toolName, actionType, complexity } = PreflightBody.parse(req.body ?? {})
 
-    // Step 1: policy evaluation (if toolName + actionType provided)
     if (toolName && actionType) {
       const policyResult = evaluatePolicy(toolName, actionType, undefined, undefined)
       if (policyResult !== 'allow') {
@@ -31,8 +34,9 @@ const preflightHandler: RequestHandler = (req, res, next) => {
       }
     }
 
-    // Step 2: HITL evaluation
-    const ctx: ActionContext = { action, complexity }
+    const ctx: ActionContext = complexity !== undefined
+      ? { action, complexity }
+      : { action }
     const trigger = evaluateHitl(ctx)
     if (trigger) {
       res.json({

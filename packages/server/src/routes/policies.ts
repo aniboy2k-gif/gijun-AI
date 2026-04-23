@@ -1,12 +1,31 @@
 import { Router, type RequestHandler } from 'express'
+import { z } from 'zod'
 import { requireToken } from '../middleware/auth.js'
-import { createPolicy, evaluatePolicy, listPolicies, setPolicyActive } from '@gijun-ai/core'
+import { createPolicy, evaluatePolicy, listPolicies, setPolicyActive, LIST_MAX_LIMIT } from '@gijun-ai/core'
 
 export const policiesRouter: ReturnType<typeof Router> = Router()
 
-const listHandler: RequestHandler = (_req, res, next) => {
+const ID_PARAM = z.coerce.number().int().positive()
+
+const ListQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(LIST_MAX_LIMIT).optional(),
+  includeInactive: z.coerce.boolean().optional(),
+})
+
+const EvaluateBody = z.object({
+  toolName: z.string().min(1).max(128),
+  actionType: z.enum(['read', 'write', 'execute', 'delete']),
+  resource: z.string().max(512).optional(),
+  taskId: z.number().int().positive().optional(),
+})
+
+const listHandler: RequestHandler = (req, res, next) => {
   try {
-    res.json(listPolicies())
+    const q = ListQuery.parse(req.query)
+    const opts: { activeOnly?: boolean; limit?: number } = {}
+    if (q.limit !== undefined) opts.limit = q.limit
+    if (q.includeInactive !== undefined) opts.activeOnly = !q.includeInactive
+    res.json(listPolicies(opts))
   } catch (err) { next(err) }
 }
 
@@ -19,10 +38,7 @@ const createHandler: RequestHandler = (req, res, next) => {
 
 const evaluateHandler: RequestHandler = (req, res, next) => {
   try {
-    const { toolName, actionType, resource, taskId } = req.body as {
-      toolName: string; actionType: 'read' | 'write' | 'execute' | 'delete'
-      resource?: string; taskId?: number
-    }
+    const { toolName, actionType, resource, taskId } = EvaluateBody.parse(req.body ?? {})
     const result = evaluatePolicy(toolName, actionType, resource, taskId)
     res.json({ result })
   } catch (err) { next(err) }
@@ -30,8 +46,7 @@ const evaluateHandler: RequestHandler = (req, res, next) => {
 
 const setActiveHandler = (active: boolean): RequestHandler => (req, res, next) => {
   try {
-    const id = parseInt(req.params['id'] as string, 10)
-    if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Invalid policy id' } }); return }
+    const id = ID_PARAM.parse(req.params['id'])
     setPolicyActive(id, active)
     res.json({ ok: true })
   } catch (err) { next(err) }
