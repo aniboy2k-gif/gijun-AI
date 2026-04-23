@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
 import { appendAuditEvent } from '../audit/service.js'
+import { CodedError, ErrorCode } from '../lib/error-codes.js'
+import { POLICY_EVAL_SAFE_CAP } from '../lib/limits.js'
 
 /** Shared across all policy kinds. */
 const BasePolicyShape = {
@@ -103,15 +105,46 @@ export function evaluate(
 ): PolicyResult {
   const db = getDb()
 
+  // NM1: lightweight COUNT pre-check bounds worst-case work when the match
+  // set blows past the safe cap. Uses the same idx_policies_eval index.
+  const precount = db.prepare(`
+    SELECT COUNT(*) AS c FROM policies
+    WHERE policy_kind = 'standard'
+      AND tool_name IN (?, '*')
+      AND action_type IN (?, '*')
+      AND (resource = ? OR resource = '*')
+      AND is_active = 1
+    LIMIT ?
+  `).get(toolName, actionType, resource, POLICY_EVAL_SAFE_CAP) as { c: number }
+
+  if (precount.c >= POLICY_EVAL_SAFE_CAP) {
+    appendAuditEvent({
+      eventType: 'policy.evaluate.overflow',
+      action: `policy evaluate overflow: matches >= ${POLICY_EVAL_SAFE_CAP}`,
+      resourceType: 'policy',
+      ...(taskId !== undefined ? { taskId } : {}),
+      payload: { toolName, actionType, resource, cap: POLICY_EVAL_SAFE_CAP },
+    })
+    console.warn(
+      `[agentguard] policy evaluate overflow — toolName=${toolName} actionType=${actionType} cap=${POLICY_EVAL_SAFE_CAP}. Operator action required.`,
+    )
+    throw new CodedError(
+      ErrorCode.POLICY_OVERFLOW,
+      `Policy evaluation overflow: matching policies >= ${POLICY_EVAL_SAFE_CAP}`,
+    )
+  }
+
   const policies = db.prepare(`
-    SELECT * FROM policies
+    SELECT id, tool_name, resource, action_type, effect, rate_limit, conditions
+    FROM policies
     WHERE policy_kind = 'standard'
       AND tool_name IN (?, '*')
       AND action_type IN (?, '*')
       AND (resource = ? OR resource = '*')
       AND is_active = 1
     ORDER BY effect DESC
-  `).all(toolName, actionType, resource) as PolicyRow[]
+    LIMIT ?
+  `).all(toolName, actionType, resource, POLICY_EVAL_SAFE_CAP) as PolicyRow[]
 
   let result: PolicyResult = 'allow'
 
