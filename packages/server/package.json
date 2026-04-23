@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "node --watch --import=tsx/esm src/server.ts",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "tsc -p tsconfig.test.json && node --test 'dist-test/__tests__/*.test.js'"
   },
   "dependencies": {
     "@gijun-ai/core": "workspace:*",
