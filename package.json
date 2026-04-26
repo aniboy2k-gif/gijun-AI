@@ -13,17 +13,22 @@
     "dev": "pnpm --filter @gijun-ai/server dev",
     "init": "node --import=tsx/esm packages/core/src/cli/init.mts",
     "audit:verify": "node --input-type=module -e \"import { runVerifyChainCli } from '@gijun-ai/core'; runVerifyChainCli()\"",
-    "lint": "pnpm -r lint",
+    "lint": "node scripts/lint.mjs check",
+    "lint:fix": "node scripts/lint.mjs check --write",
+    "sync:readme": "node scripts/sync-readme.mjs",
+    "sync:readme:check": "node scripts/sync-readme.mjs --check",
     "test": "pnpm -r test"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
+    "@biomejs/biome": "^2.4.13",
     "@types/node": "^22.15.3",
-    "tsup": "^8.4.0"
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "@biomejs/biome"
     ]
   }
 }

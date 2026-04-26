@@ -1,0 +1,58 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/dist-test",
+      "!**/node_modules",
+      "!**/coverage",
+      "!**/*.db",
+      "!**/*.db-shm",
+      "!**/*.db-wal"
+    ]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "noParameterAssign": "off",
+        "useNodejsImportProtocol": "warn",
+        "useTemplate": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noConsole": {
+          "level": "warn",
+          "options": { "allow": ["error", "warn", "log", "info"] }
+        },
+        "noDoubleEquals": "error"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn",
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "off"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "useLiteralKeys": "off"
+      }
+    }
+  },
+  "javascript": {
+    "globals": []
+  }
+}

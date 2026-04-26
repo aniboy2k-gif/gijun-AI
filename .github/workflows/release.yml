@@ -1,0 +1,151 @@
+name: release
+
+# Release gate — single-user proportionality model.
+# Immediate gates (1-4) run automatically on tag push.
+# Escalation gates (5-6: provenance + publish approval) are stubbed
+# and remain inactive until npm publish is enabled (RFC 0002).
+#
+# Reference: prompt_plan.md / DA chain final.txt H4.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Default minimal permissions; release job below escalates to contents: write.
+permissions:
+  contents: read
+
+jobs:
+  # Gate 1: versioning — tag must match strict semver
+  versioning:
+    name: Gate 1 / versioning
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - name: Validate tag shape
+        id: parse
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "FAIL: tag '$REF_NAME' does not match ^v\\d+\\.\\d+\\.\\d+$"
+            exit 1
+          fi
+          version="${REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Tag '$REF_NAME' OK (version=$version)"
+
+  # Gate 2: changelog — CHANGELOG.md must have a matching entry header
+  changelog:
+    name: Gate 2 / changelog entry
+    runs-on: ubuntu-latest
+    needs: versioning
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CHANGELOG header for v${{ needs.versioning.outputs.version }}
+        env:
+          VERSION: ${{ needs.versioning.outputs.version }}
+        run: |
+          set -euo pipefail
+          header="^## \\[${VERSION}\\] "
+          if ! grep -E "$header" CHANGELOG.md > /dev/null; then
+            echo "FAIL: CHANGELOG.md has no '## [${VERSION}]' header"
+            echo "      Expected something like: ## [${VERSION}] — YYYY-MM-DD"
+            exit 1
+          fi
+          echo "CHANGELOG entry for ${VERSION} present"
+
+  # Gate 3: CI — full ci.yml (build + lint + typecheck + tests + smoke)
+  ci:
+    name: Gate 3 / ci
+    needs: versioning
+    uses: ./.github/workflows/ci.yml
+
+  # Gate 4: build artifact — re-pack mcp-server tarball, verify publish contract
+  build:
+    name: Gate 4 / build artifact
+    runs-on: ubuntu-latest
+    needs: [ci, versioning]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build all packages
+        run: pnpm -r build
+      - name: Verify mcp-server publish contract
+        shell: bash
+        run: |
+          set -e
+          cd packages/mcp-server
+          TARBALL=$(pnpm pack 2>&1 | tail -1)
+          TARBALL_ABS="$PWD/$TARBALL"
+          TMPDIR=$(mktemp -d)
+          tar -xzf "$TARBALL_ABS" -C "$TMPDIR"
+          test -x "$TMPDIR/package/dist/index.js"
+          head -1 "$TMPDIR/package/dist/index.js" | grep -q "^#!/usr/bin/env node"
+          if grep -q "workspace:" "$TMPDIR/package/package.json"; then
+            echo "FAIL: workspace:* not resolved"; exit 1
+          fi
+          node --check "$TMPDIR/package/dist/index.js"
+          echo "Publish contract OK"
+
+  # Gate 5 (escalation, stub): provenance / SBOM
+  # Activated when RFC 0002 lands and npm publish is enabled.
+  # Until then this job is intentionally absent so it cannot fire.
+  #
+  # provenance:
+  #   needs: build
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #     attestations: write
+  #   ...
+
+  # Gate 6 (escalation, stub): publish approval
+  # workflow_dispatch with environment protection rule.
+  # Activated together with gate 5.
+
+  # Final: GitHub release creation (single-user proportional release).
+  release:
+    name: GitHub release
+    runs-on: ubuntu-latest
+    needs: [versioning, changelog, ci, build]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract release notes from CHANGELOG
+        env:
+          VERSION: ${{ needs.versioning.outputs.version }}
+        run: |
+          set -euo pipefail
+          start="^## \\[${VERSION}\\]"
+          # Capture lines from `## [${VERSION}]` up to (but not including) the next `## [`.
+          awk -v re="$start" '
+            $0 ~ re { capture = 1; next }
+            capture && /^## \[/ { exit }
+            capture { print }
+          ' CHANGELOG.md > /tmp/release-notes.md
+          echo "--- release notes preview ---"
+          head -30 /tmp/release-notes.md
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.versioning.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/release-notes.md \
+            --verify-tag
