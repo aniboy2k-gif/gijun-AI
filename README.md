@@ -145,9 +145,24 @@ Every event is SHA-256 chained over `(prev_chain_hash, content_hash)`, where `co
 
 Key file: `packages/core/src/audit/service.ts`
 
-### 2. Task + HITL Gate — 4-axis triggers
+### 2. Task + HITL Gate
 
-Tasks carry a `complexity` axis (`trivial | standard | complex | critical`). HITL evaluation combines four dimensions: **irreversibility**, **blast_radius**, **complexity**, and **verify_fail**. Any axis over its threshold flips the task into `hitl_wait` status. The operator (you — gijun-ai is single-user) must explicitly call `POST /tasks/:id/hitl-approve` before irreversible execution proceeds. This is a self-approval speed-bump against a forgetful runaway agent, not multi-party governance; fork the project if you need separation-of-duties.
+The HITL surface has two distinct entry points; the README/CHANGELOG abbreviation "4-axis" referred to the second one and is preserved below for the legacy reference.
+
+**Step-level — `evaluateStepHitl(ctx)`** *(was `evaluateHitl`, deprecated since v0.1.3)*. Returns the first triggering reason for a single proposed action, or `null`. Five reasons across four underlying axes:
+- `irreversible` — action string matches a destructive pattern (`DROP TABLE`, `rm -rf`, `git push --force`, …)
+- `blast_radius` — `external` scope
+- `complexity` — `critical` complexity
+- `verify_fail` — verification verdict is `fail`
+- `low_confidence` — verification confidence below 0.7 (verification axis sub-case)
+
+**Task-level — `evaluateTaskHitl(input, opts?)`** *(was `evaluateHitlForTask`, deprecated since v0.1.3)*. Called by `createTask`. Returns `{ hitlRequired, trigger }`. Records up to four axes in the trigger payload:
+- `critical_complexity` — `critical` always requires HITL
+- `complex_complexity` — `complex` requires HITL when full context (`toolName`/`actionType`/`resource`) is present
+- `incomplete_context` — `complex` without context
+- `strict_mode_downgraded` — `complex` without context with `GIJUN_HITL_STRICT_MODE!=1` (warning, lets through; v0.1.2 will flip the default)
+
+The operator (you — gijun-ai is single-user) must explicitly call `POST /tasks/:id/hitl-approve` before a task can transition to `done`. This is a self-approval speed-bump against a forgetful runaway agent, not multi-party governance; fork the project if you need separation-of-duties.
 
 Key files: `packages/core/src/task/service.ts`, `packages/core/src/hitl/gate.ts`
 

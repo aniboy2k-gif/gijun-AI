@@ -29,7 +29,16 @@ export type HitlTrigger =
   | { reason: 'verify_fail'; verdict: string }
   | { reason: 'low_confidence'; confidence: number }
 
-export function evaluateHitl(ctx: ActionContext): HitlTrigger | null {
+/**
+ * Step-level HITL evaluation. Returns the first matching trigger or null.
+ *
+ * Five reasons (kept distinct in the return type so callers can branch on
+ * trigger.reason): irreversible, blast_radius, complexity, verify_fail,
+ * low_confidence. The README/CHANGELOG abbreviation "4-axis" refers to the
+ * underlying axes (irreversibility, blast radius, complexity, verification),
+ * with low_confidence as a verification sub-case.
+ */
+export function evaluateStepHitl(ctx: ActionContext): HitlTrigger | null {
   const matched = IRREVERSIBLE_PATTERNS.find(p => ctx.action.toUpperCase().includes(p.toUpperCase()))
   if (matched) return { reason: 'irreversible', pattern: matched }
 
@@ -41,6 +50,16 @@ export function evaluateHitl(ctx: ActionContext): HitlTrigger | null {
   }
 
   return null
+}
+
+/**
+ * @deprecated since v0.1.3 — use {@link evaluateStepHitl}. Kept for
+ * backwards compatibility; will be removed in v0.2 or v1.0. The two
+ * functions are byte-equivalent today; the rename clarifies that this
+ * is *step-level* evaluation, distinct from {@link evaluateTaskHitl}.
+ */
+export function evaluateHitl(ctx: ActionContext): HitlTrigger | null {
+  return evaluateStepHitl(ctx)
 }
 
 export function describeHitlTrigger(trigger: HitlTrigger): string {
@@ -95,7 +114,11 @@ function strictModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 
 /**
- * Evaluate HITL enforcement for a task at creation time (option B).
+ * Task-level HITL evaluation at task creation time.
+ *
+ * Four axes recorded in the trigger payload:
+ *   critical_complexity, complex_complexity, incomplete_context,
+ *   strict_mode_downgraded.
  *
  * Fail-closed principle: missing context fields escalate severity rather than
  * weaken the gate. critical complexity always requires HITL regardless of fields.
@@ -104,7 +127,7 @@ function strictModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  * (GIJUN_HITL_STRICT_MODE env var gates the transition — v0.1.2 will flip the
  * default to strict).
  */
-export function evaluateHitlForTask(
+export function evaluateTaskHitl(
   input: TaskHitlInput,
   opts: { now?: Date; env?: NodeJS.ProcessEnv } = {},
 ): TaskHitlDecision {
@@ -160,4 +183,17 @@ export function evaluateHitlForTask(
   }
 
   return { hitlRequired, trigger }
+}
+
+/**
+ * @deprecated since v0.1.3 — use {@link evaluateTaskHitl}. Kept for
+ * backwards compatibility; will be removed in v0.2 or v1.0. The two
+ * functions share the same body; the rename disambiguates step-level vs
+ * task-level evaluation, which the README/CHANGELOG conflated under "HITL".
+ */
+export function evaluateHitlForTask(
+  input: TaskHitlInput,
+  opts: { now?: Date; env?: NodeJS.ProcessEnv } = {},
+): TaskHitlDecision {
+  return evaluateTaskHitl(input, opts)
 }

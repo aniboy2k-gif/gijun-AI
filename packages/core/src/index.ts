@@ -14,7 +14,14 @@ export {
   searchKnowledge, createKnowledgeItem, promoteCandidate, listKnowledge
 } from './knowledge/retriever.js'
 
-export { evaluateHitl, describeHitlTrigger, evaluateHitlForTask } from './hitl/gate.js'
+export {
+  evaluateStepHitl,
+  evaluateTaskHitl,
+  describeHitlTrigger,
+  // deprecated aliases — kept until v0.2/v1.0
+  evaluateHitl,
+  evaluateHitlForTask,
+} from './hitl/gate.js'
 export type { HitlTrigger, ActionContext, TaskHitlInput, TaskHitlDecision, TaskHitlTriggerPayload } from './hitl/gate.js'
 
 export { withTxAndAudit } from './lib/tx.js'
