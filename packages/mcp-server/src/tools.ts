@@ -31,7 +31,7 @@ function def<T extends z.ZodTypeAny>(
 }
 
 // ============================================================
-// READ tools (8) — no side effects
+// READ tools (9) — no side effects
 // ============================================================
 
 const ListTasksSchema = z.object({
