@@ -1,7 +1,7 @@
 {
   "name": "@gijun-ai/mcp-server",
   "version": "0.1.0",
-  "description": "MCP server for personal AI agent governance platform",
+  "description": "MCP server for personal single-user AI agent audit/verification workbench",
   "type": "module",
   "bin": {
     "agentguard-mcp": "./dist/index.js"

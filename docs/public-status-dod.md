@@ -35,7 +35,7 @@ All of the following must be green before the repository description is updated 
 
 ### Build & test reproducibility
 - [ ] `pnpm install && pnpm build && pnpm test` green on Node 22 LTS, macOS (local)
-- [ ] `pnpm install && pnpm build && pnpm test` green on Node 22 LTS, Ubuntu (via GitHub Actions `ci.yml` — v0.2 adds this)
+- [x] `pnpm install && pnpm build && pnpm test` green on Node 22 LTS, Ubuntu (via GitHub Actions `ci.yml` — added in v0.1.2)
 - [ ] At minimum: 30 unit tests from v0.1.1 all pass
 - [ ] `LICENSE` file exists at repository root with the full MIT license text
 
@@ -84,3 +84,33 @@ If you need L4-grade capabilities, **fork the project**. The MIT license allows 
 - **Tooling**: `.github/workflows/claim-check.yml` enforces most of the L2 documentation-integrity checklist automatically.
 - **Human**: The "Honesty of retroactive claims" and "maintainer SLA" items cannot be automated — they are honor-system commitments verified by the PR reviewer.
 - **Iron Law**: No level is claimed until **every** checkbox is green. Partial compliance does not count.
+
+---
+
+## Quarterly drift checklist
+
+Run this on every quarterly review, or before tagging any release. Five
+fields catch the drift modes that have actually surfaced (workspace
+descriptions, README "Known Limitations", DoD checkboxes, ASI labels,
+CHANGELOG/`/health` version alignment). If the project ever crosses
+**10 ASI-or-contract claims** or **2 outside contributors**, replace this
+checklist with a structured `claims.yaml` registry — until then a
+markdown checklist beats a build-time tool.
+
+- [ ] All `packages/*/package.json` `description` fields use "audit/verification workbench" wording (no `governance platform/layer`)
+- [ ] README "Known Limitations" reflects current state (no items already shipped, no items genuinely missing)
+- [ ] DoD checkboxes match shipping state (no `v0.2 adds this` for items already merged)
+- [ ] All ASI labels in README match `claim-map.yml` and `[passed: scoped]` notes are still accurate
+- [ ] CHANGELOG has an entry for current `package.json` version and `/health` reports the same string
+
+## Extension thresholds (when a heavier tool becomes worth it)
+
+These quantitative triggers replace gut-feel "we should adopt X". Below
+the threshold the proportional remedy in this doc / CONTRIBUTING is
+expected to suffice; at or above, re-evaluate.
+
+- **changesets / monorepo release tooling** → 2+ active contributors
+- **`claims.yaml` structured registry + README generation** → 10+ ASI-or-contract claims
+- **ESLint rule / wrapper enforcing `requireToken`** → 3+ external contributor PRs adding routes
+- **MCP tools namespace split (read/write/audit)** → 3+ MCP clients integrating against the surface
+- **redaction policy externalisation + `redaction_policy_hash`** → first concrete request to extend pattern set, OR the v0.2 milestone (whichever comes first)

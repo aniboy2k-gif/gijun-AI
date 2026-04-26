@@ -445,7 +445,6 @@ v0.1 is an alpha for **solo developers running a single local instance**. Things
 - **No distributed audit** — hash chain is a single file, not replicated.
 - **No auth provider integration** — one `AGENTGUARD_TOKEN` per server, rotated by hand.
 - **Partial MCP coverage** — 17 tools cover the common-path agent actions; raw policy management, playbook CRUD, incident pattern promotion, and `POST /traces` / `POST /verifications` are REST-only in v0.1.
-- **No CI / no GitHub Actions** — tests run locally (`pnpm test`) only. CI is on the v0.2 list.
 - **Windows untested** — all dev on macOS Darwin 25.x; Linux expected to work.
 - **No UI** — everything is REST + MCP. A `packages/web` slot exists but is empty.
 

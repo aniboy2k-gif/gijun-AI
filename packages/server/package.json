@@ -1,7 +1,7 @@
 {
   "name": "@gijun-ai/server",
   "version": "0.1.0",
-  "description": "REST API server for the personal AI agent governance platform",
+  "description": "REST API server for personal single-user AI agent audit/verification workbench",
   "type": "module",
   "main": "./dist/server.js",
   "scripts": {
