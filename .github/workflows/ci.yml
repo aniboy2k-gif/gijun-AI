@@ -60,6 +60,10 @@ jobs:
             fi
           done
 
+      - name: Verify audit-event-schema SSOT
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm verify:audit-schema
+
       - name: Run tests
         run: pnpm -r test
         env:

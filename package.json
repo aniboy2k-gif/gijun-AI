@@ -17,6 +17,7 @@
     "lint:fix": "node scripts/lint.mjs check --write",
     "sync:readme": "node scripts/sync-readme.mjs",
     "sync:readme:check": "node scripts/sync-readme.mjs --check",
+    "verify:audit-schema": "node scripts/verify-audit-schema.mjs",
     "test": "pnpm -r test"
   },
   "devDependencies": {
