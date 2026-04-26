@@ -38,3 +38,49 @@ jobs:
         env:
           # E2E tests set their own test tokens; this satisfies tsx dev mode if it runs
           AGENTGUARD_TOKEN: ci-placeholder-token-never-used-at-runtime
+
+      - name: MCP package smoke test (publish contract)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -e
+          # Pack the mcp-server using its prepack hook (builds dist + chmod).
+          # pnpm pack resolves workspace:* to concrete versions for publish.
+          cd packages/mcp-server
+          TARBALL=$(pnpm pack 2>&1 | tail -1)
+          TARBALL_ABS="$PWD/$TARBALL"
+
+          # Verify tarball structure
+          TMPDIR=$(mktemp -d)
+          tar -xzf "$TARBALL_ABS" -C "$TMPDIR"
+
+          # bin file present and points to dist
+          test -f "$TMPDIR/package/dist/index.js" \
+            || { echo "FAIL: dist/index.js not in tarball"; exit 1; }
+          test -x "$TMPDIR/package/dist/index.js" \
+            || { echo "FAIL: dist/index.js not executable (prepack chmod missed)"; exit 1; }
+
+          # Shebang sanity (Node ESM module entry)
+          head -1 "$TMPDIR/package/dist/index.js" | grep -q "^#!/usr/bin/env node" \
+            || { echo "FAIL: missing shebang"; exit 1; }
+
+          # bin field still resolves to ./dist/index.js after publish
+          BIN_PATH=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TMPDIR/package/package.json'))['bin']['agentguard-mcp'])")
+          [ "$BIN_PATH" = "./dist/index.js" ] \
+            || { echo "FAIL: bin field is '$BIN_PATH', expected ./dist/index.js"; exit 1; }
+
+          # workspace:* must be resolved to concrete version (publishable)
+          grep -q "workspace:" "$TMPDIR/package/package.json" \
+            && { echo "FAIL: workspace:* not resolved in publish artifact"; exit 1; } \
+            || true
+
+          # bin must start without crashing; stdio mode blocks → kill after 2s (exit 124 expected)
+          set +e
+          timeout 2 "$TMPDIR/package/dist/index.js"
+          ec=$?
+          set -e
+          [ "$ec" -eq 124 ] || { echo "FAIL: MCP bin unexpected exit code $ec"; exit 1; }
+
+          echo "MCP smoke test PASSED"
+          rm -f "$TARBALL_ABS"
+          rm -rf "$TMPDIR"

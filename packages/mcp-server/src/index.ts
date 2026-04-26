@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /**
  * agentguard MCP server — entry point.
  * Supports STDIO (default) and Streamable HTTP transports.

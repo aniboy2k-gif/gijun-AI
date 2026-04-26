@@ -4,13 +4,20 @@
   "description": "MCP server for personal AI agent governance platform",
   "type": "module",
   "bin": {
-    "agentguard-mcp": "./src/index.ts"
+    "agentguard-mcp": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepack": "tsc && chmod +x dist/index.js",
     "dev": "node --import=tsx/esm src/index.ts",
-    "start:stdio": "node --import=tsx/esm src/index.ts",
-    "start:http": "AGENTGUARD_MCP_TRANSPORT=http node --import=tsx/esm src/index.ts"
+    "start:stdio": "node dist/index.js",
+    "dev:stdio": "node --import=tsx/esm src/index.ts",
+    "start:http": "AGENTGUARD_MCP_TRANSPORT=http node dist/index.js",
+    "dev:http": "AGENTGUARD_MCP_TRANSPORT=http node --import=tsx/esm src/index.ts"
   },
   "dependencies": {
     "@gijun-ai/core": "workspace:*",
