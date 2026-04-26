@@ -74,13 +74,18 @@ jobs:
             && { echo "FAIL: workspace:* not resolved in publish artifact"; exit 1; } \
             || true
 
-          # bin must start without crashing; stdio mode blocks → kill after 2s (exit 124 expected)
+          # bin must start without crashing. Two clean exits are accepted:
+          #   exit 0   → stdio transport read EOF from /dev/null and shut down
+          #   exit 124 → no EOF arrived in 2s, timeout killed the process
+          # Anything else (1/2/127/Node abort/segfault) is a real failure.
           set +e
-          timeout 2 "$TMPDIR/package/dist/index.js"
+          timeout 2 "$TMPDIR/package/dist/index.js" < /dev/null
           ec=$?
           set -e
-          [ "$ec" -eq 124 ] || { echo "FAIL: MCP bin unexpected exit code $ec"; exit 1; }
-
-          echo "MCP smoke test PASSED"
+          case "$ec" in
+            0)   echo "MCP smoke test PASSED (exit 0 — clean stdin EOF)" ;;
+            124) echo "MCP smoke test PASSED (exit 124 — timeout while listening)" ;;
+            *)   echo "FAIL: MCP bin unexpected exit code $ec"; exit 1 ;;
+          esac
           rm -f "$TARBALL_ABS"
           rm -rf "$TMPDIR"
