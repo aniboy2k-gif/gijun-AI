@@ -17,7 +17,8 @@
     "start:stdio": "node dist/index.js",
     "dev:stdio": "node --import=tsx/esm src/index.ts",
     "start:http": "AGENTGUARD_MCP_TRANSPORT=http node dist/index.js",
-    "dev:http": "AGENTGUARD_MCP_TRANSPORT=http node --import=tsx/esm src/index.ts"
+    "dev:http": "AGENTGUARD_MCP_TRANSPORT=http node --import=tsx/esm src/index.ts",
+    "test": "tsc -p tsconfig.test.json && node --test 'dist-test/__tests__/*.test.js'"
   },
   "dependencies": {
     "@gijun-ai/core": "workspace:*",

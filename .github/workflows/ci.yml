@@ -48,11 +48,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm -r exec tsc --noEmit
 
-      - name: Typecheck tests (core/server)
+      - name: Typecheck tests (any package with tsconfig.test.json)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -e
-          for pkg in packages/core packages/server; do
+          for pkg in packages/*; do
             if [ -f "$pkg/tsconfig.test.json" ]; then
               echo "::group::typecheck:tests $pkg"
               (cd "$pkg" && pnpm exec tsc -p tsconfig.test.json --noEmit)
