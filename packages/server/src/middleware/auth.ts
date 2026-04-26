@@ -10,7 +10,7 @@ if (!TOKEN) {
   )
 }
 
-/** Protects write endpoints. Read-only GET routes skip this middleware. */
+/** Required on every protected route. Only GET /health (mounted in app.ts) skips this. */
 export function requireToken(req: Request, res: Response, next: NextFunction): void {
   if (!TOKEN) {
     res.status(503).json({ error: 'Server not configured: AGENTGUARD_TOKEN missing' })
