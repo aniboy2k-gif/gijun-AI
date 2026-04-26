@@ -371,14 +371,15 @@ Each ASI claim below carries a verification label so readers know which claims a
 | ASI03 Training Data Poisoning | `[out of scope]` | Upstream model hygiene is the provider's responsibility |
 | ASI04 Model DoS | `[pending E2E]` | rate_limit advisory check + budget advisory status — **no end-to-end blocking test** (v0.2 roadmap) |
 | ASI05 Supply Chain | `[pending]` | `pnpm-lock.yaml` pinned, no automated SBOM / Dependabot yet (v0.2 roadmap) |
-| ASI06 Sensitive Info Disclosure | `[passed]` | `redactPayload` + `original_hash`-based chain verification |
+| ASI06 Sensitive Info Disclosure | `[passed: scoped]` | `redactPayload` + `original_hash`-based chain verification — **scoped: 4 key patterns only** (sk-, sk-ant-, Bearer, ghp_); other-vendor keys + PII are operator-handled |
 | ASI07 Insecure Plugin Design | `[passed]` | Two independent tokens (REST + MCP) — `middleware/auth.ts`, `transports.ts` |
 | ASI08 Excessive Agency | `[passed]` (v0.1.1) | `hitl-enforcement.test.ts`, `task-atomicity.test.ts` — **was documented but not enforced in v0.1.0** |
 | ASI09 Overreliance | `[passed]` | `preflight_check` and `check_budget` return advisory-only results; unit tests cover each path |
 | ASI10 Model Theft | `[out of scope]` | Model weights not stored; prompt/response storage threat model is host physical access |
 
 **Label legend**:
-- `[passed]` — an automated test in this repository asserts the claim.
+- `[passed]` — an automated test in this repository asserts the claim in full.
+- `[passed: scoped]` — an automated test asserts the claim within a documented scope; broader coverage is the operator's responsibility.
 - `[pending E2E]` — unit tests exist but end-to-end integration that exercises the claim is on the v0.2 roadmap.
 - `[unverified]` — no test currently asserts the specific claim; consumers should verify independently.
 - `[out of scope]` — explicitly not addressed by this tool; listed for ASI coverage completeness.
@@ -411,6 +412,7 @@ Each ASI claim below carries a verification label so readers know which claims a
 ### ASI06 — Sensitive Information Disclosure
 
 **Countermeasure**: redaction via `payload` blank + `original_hash` preservation. Subject-access-rights requests can blank PII without breaking the audit chain.
+**Scope (honest)**: `redactPayload` matches **4 patterns** at the time of writing: `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…` (see `audit/service.ts:7-12`). It does **not** match AWS access keys (`AKIA…`), GCP API keys, Stripe `sk_live_…`, Slack tokens (`xoxb-…`), JWTs, OpenAI Project keys, or PII (emails, phone numbers, KR resident IDs). Externalising the pattern set is on the v0.2 roadmap together with `audit_events.redaction_policy_hash` so audit reproducibility survives policy changes. Until then, broader redaction is the operator's responsibility — see [`docs/legal.md`](./docs/legal.md).
 **Modules**: `packages/core/src/audit/service.ts` (`redactPayload`)
 
 ### ASI07 — Insecure Plugin Design
