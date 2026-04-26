@@ -51,21 +51,26 @@ export const AuditEventSchema = z.object({
 
 export type AuditEventInput = z.input<typeof AuditEventSchema>
 
+type ValidatedAuditEvent = z.infer<typeof AuditEventSchema>
+
 /**
- * Internal: INSERT only — no own transaction. Must be called inside an active
- * BEGIN IMMEDIATE transaction so it shares the caller's write lock and commit.
+ * Internal helper. Reads prevHash, computes original/content/chain hashes
+ * (against unredacted vs redacted payload), and INSERTs the audit row.
+ * Must run inside an open transaction owned by the caller — does NOT
+ * BEGIN/COMMIT itself.
  */
-export function insertAuditEventInTx(
+function insertAuditRow(
   db: ReturnType<typeof getDb>,
-  input: AuditEventInput,
+  validated: ValidatedAuditEvent,
   createdAt: string,
 ): number {
-  const validated = AuditEventSchema.parse(input)
   const lastRow = db
     .prepare('SELECT chain_hash FROM audit_events ORDER BY id DESC LIMIT 1')
     .get() as { chain_hash: string } | undefined
   const prevHash = lastRow?.chain_hash ?? getGenesisHash()
 
+  // originalHash: hash of the *unredacted* payload — chain_hash binds to
+  // this so redaction policy changes don't invalidate the chain.
   const originalHash = computeContentHash({
     eventType: validated.eventType,
     actor: validated.actor,
@@ -73,6 +78,9 @@ export function insertAuditEventInTx(
     payload: validated.payload,
     createdAt,
   })
+
+  // Redact sensitive data before storage; contentHash is the hash of the
+  // post-redaction payload (what's actually persisted).
   const redactedPayload = redactPayload(validated.payload)
   const contentHash = computeContentHash({
     eventType: validated.eventType,
@@ -81,6 +89,7 @@ export function insertAuditEventInTx(
     payload: redactedPayload,
     createdAt,
   })
+
   const chainHash = computeChainHash(prevHash, originalHash)
 
   const result = db.prepare(`
@@ -98,6 +107,18 @@ export function insertAuditEventInTx(
   return result.lastInsertRowid as number
 }
 
+/**
+ * Internal: INSERT only — no own transaction. Must be called inside an active
+ * BEGIN IMMEDIATE transaction so it shares the caller's write lock and commit.
+ */
+export function insertAuditEventInTx(
+  db: ReturnType<typeof getDb>,
+  input: AuditEventInput,
+  createdAt: string,
+): number {
+  return insertAuditRow(db, AuditEventSchema.parse(input), createdAt)
+}
+
 export function appendAuditEvent(input: AuditEventInput): number {
   const validated = AuditEventSchema.parse(input)
   const db = getDb()
@@ -107,62 +128,9 @@ export function appendAuditEvent(input: AuditEventInput): number {
   // when multiple processes read the same prevHash before either inserts.
   db.exec('BEGIN IMMEDIATE')
   try {
-    const lastRow = db
-      .prepare('SELECT chain_hash FROM audit_events ORDER BY id DESC LIMIT 1')
-      .get() as { chain_hash: string } | undefined
-
-    const prevHash = lastRow?.chain_hash ?? getGenesisHash()
-
-    // originalHash: computed from the unredacted payload.
-    // chain_hash uses this so that redaction policy changes don't invalidate the chain.
-    const originalHash = computeContentHash({
-      eventType: validated.eventType,
-      actor: validated.actor,
-      action: validated.action,
-      payload: validated.payload,
-      createdAt,
-    })
-
-    // Redact sensitive data before storage.
-    const redactedPayload = redactPayload(validated.payload)
-
-    // contentHash: hash of what is actually stored (post-redaction).
-    const contentHash = computeContentHash({
-      eventType: validated.eventType,
-      actor: validated.actor,
-      action: validated.action,
-      payload: redactedPayload,
-      createdAt,
-    })
-
-    const chainHash = computeChainHash(prevHash, originalHash)
-
-    const result = db.prepare(`
-      INSERT INTO audit_events
-        (prev_hash, original_hash, original_hash_type, content_hash, chain_hash,
-         event_type, actor, actor_model,
-         task_id, resource_type, resource_id, action, payload, ip_addr, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      prevHash,
-      originalHash,
-      'redaction_pre',   // new rows always carry semantic original_hash
-      contentHash,
-      chainHash,
-      validated.eventType,
-      validated.actor,
-      validated.actorModel ?? null,
-      validated.taskId ?? null,
-      validated.resourceType ?? null,
-      validated.resourceId ?? null,
-      validated.action,
-      JSON.stringify(redactedPayload),
-      validated.ipAddr ?? null,
-      createdAt,
-    )
-
+    const id = insertAuditRow(db, validated, createdAt)
     db.exec('COMMIT')
-    return result.lastInsertRowid as number
+    return id
   } catch (e) {
     db.exec('ROLLBACK')
     throw e
