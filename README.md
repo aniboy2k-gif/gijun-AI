@@ -507,12 +507,12 @@ DA-chain–driven hardening across two patches (v0.1.4 + v0.2.0). No product beh
 
 The following items have explicit reopening triggers — they will move forward when the trigger fires, not on a date.
 
-- **Zod 4 migration** (split RFC: validation / execution / migration / rollback) — triggered by zod 3 EOL or v0.3.0 RFC approval. PR #6 (zod 3.25 → 4.3) was closed after a Tier 1 architecture DA chain found audit-chain hash-equality risk and `z.record` schema breaking; see PR #6 close comment for the full reasoning.
+- **Zod 4 migration** — intentionally parked until a concrete migration window opens. The migration is deferred because Zod 4 changes validation semantics that may affect audit hash stability; see PR #6 for the closing rationale.
 - **TypeScript 7.0 direct migration** — triggered by TS 7.0 RC release (skip the 6.0 transition release). PR #4 (typescript 5.9 → 6.0) was closed after a Tier 1 DA chain found tsup 8.5.1 + TS 6.0 DTS-build incompatibility on macOS via the `baseUrl` deprecation→error path.
-- **`audit_events.redaction_policy_hash`** so audit reproducibility survives redaction-policy changes (ASI06 long-tail).
-- **Provenance / SBOM publish gate** (RFC 0002) — required before npm publish; release.yml has stub stages for it.
+- **Audit reproducibility across redaction-policy changes** (`audit_events.redaction_policy_hash`, ASI06 long-tail). Tracking: #9.
+- **SBOM and provenance for release artifacts** — required before npm publish; release.yml has stub stages for it. Tracking: #8.
 - **Publish-approval gate** (release.yml stages 5–6, currently stubbed).
-- **ASI04 end-to-end DoS blocking test** (currently `[pending E2E]`).
+- **End-to-end tests proving abusive requests are actually blocked** (ASI04, currently `[pending E2E]`). Tracking: #7.
 - **`packages/web`** read-only dashboard (Vite + shadcn/ui) — slot exists but empty.
 - **Playbook CRUD in MCP** / **Incident pattern promotion via MCP** / **`POST /policies/:id` PATCH for edit-in-place**.
 - **JSONL export of audit log** for external retention.
