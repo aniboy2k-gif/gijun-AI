@@ -4,6 +4,127 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.1.3] — 2026-04-26
+
+### Context
+
+DA-chain Tier 1 review (Gemini → ChatGPT → Claude Web, `architecture` role,
+DeepSeek skipped due to context pollution) found 17 issues against v0.1.2.
+Triage: 1 CRITICAL (publish blocker), 5 HIGH, 5 MEDIUM, 3 LOW, 3 deferred
+to v0.2. The Claude Web meta-meta review caught proportionality violations
+in the earlier remedies (changesets / claims.yaml registry / immediate
+function rename / redaction externalisation) and they were rejected; the
+v0.1.3 patch ships only proportional fixes consistent with the
+single-user personal-repo identity.
+
+No product behaviour changes. No DB migrations.
+
+### Added
+
+- **`evaluateStepHitl(ctx)` and `evaluateTaskHitl(input, opts?)`** in
+  `@gijun-ai/core` — canonical names that disambiguate step-level
+  evaluation (5 reasons) from task-level evaluation (4 axes). Both are
+  body-equivalent to the previous `evaluateHitl` / `evaluateHitlForTask`,
+  which become `@deprecated since v0.1.3` thin wrappers (M1).
+- **MCP smoke test in `.github/workflows/ci.yml`** — `pnpm pack` →
+  isolated tarball extraction → `dist/index.js` shebang and executable
+  bit verification → `bin` field check → `workspace:*` resolution
+  check → bin-startup-without-crash. Closes the C1 publish-contract gap
+  by making it CI-enforced (C1).
+- **`packages/mcp-server/package.json`**: `files: ["dist", "README.md"]`
+  + `prepack: tsc && chmod +x dist/index.js` so the publish artifact is
+  predictable on every `npm pack` (C1).
+- **DoD quarterly drift checklist** (`docs/public-status-dod.md`) — 5
+  items the maintainer re-runs per quarter to catch description, README
+  Known-Limitations, DoD checkbox, ASI label, and CHANGELOG/`/health`
+  drift. Replaces the proposed claims.yaml registry as proportional for
+  current claim count (H3, M5).
+- **DoD extension thresholds** — quantitative triggers to revisit
+  changesets / claims.yaml / ESLint rule / namespace split / redaction
+  externalisation when the repo crosses 2+ contributors / 10+ claims /
+  3+ external PRs / 3+ MCP clients / first concrete request (M5).
+
+### Changed
+
+- **C1 (publish blocker)** `packages/mcp-server`: `bin` →
+  `./dist/index.js` (was `./src/index.ts` which Node cannot execute);
+  `src/index.ts` gets a `#!/usr/bin/env node` shebang; `start:stdio`
+  now runs `node dist/index.js` and `dev:stdio` keeps the tsx mode.
+  `start:http` / `dev:http` split mirrors that.
+- **H1 (monorepo version sync)**: workspace versions
+  `0.1.0 → 0.1.3` across `core`, `server`, `mcp-server`. Root
+  `package.json` `0.1.2 → 0.1.3`. `mcp-server` now reads its own
+  `package.json` at startup so the MCP `serverInfo.version` exposed to
+  clients tracks the package, not a stale literal. (changesets is NOT
+  introduced — see DoD extension thresholds.)
+- **H2** `packages/server/src/middleware/auth.ts:13` comment: replaced
+  the false claim that GET routes skip the middleware. The actual
+  policy ("Required on every protected route. Only `GET /health`
+  skips this") matches the README.
+- **H3 (drift cleanup)**: workspace `package.json` `description`
+  fields now use "audit/verification workbench" wording (was
+  "governance platform" — already removed from README in v0.1.2 but
+  the workspace metadata had been missed). README Known Limitations
+  drops the obsolete "No CI / no GitHub Actions" item (CI was added
+  in v0.1.2). DoD line 38 switches from "v0.2 adds this" to
+  "added in v0.1.2" with the checkbox checked.
+- **H4 (ASI06 claim scope)**: README ASI06 label refines from
+  `[passed]` to `[passed: scoped]`, with an enumerated list of the
+  4 covered key patterns and the families that are explicitly the
+  operator's responsibility (AWS / GCP / Stripe / Slack / JWT / PII).
+  New `[passed: scoped]` legend entry added.
+- **H5 short-term remedy** Genesis Hash duplication: cross-reference
+  comments tie `audit/chain.ts:3` and `migrations/001_initial.sql:136`
+  together. Run-time `assertGenesisHash()` and the proposed
+  `schema_metadata` table are deferred to v0.2.
+- **M2** `packages/mcp-server/src/tools.ts:34` section header count
+  `READ tools (8)` → `(9)`. README MCP table was already correct.
+- **M3** `audit/service.ts`: extracted private `insertAuditRow` helper
+  shared by `insertAuditEventInTx` and `appendAuditEvent`. No
+  behaviour change — just removes ~70 lines of duplicated hash-and-
+  insert logic.
+- **L3** `CHANGELOG.md` v0.1.1 entry: added the missing `## [0.1.1]`
+  header (the retroactive honesty note used to read as a stray block
+  at the bottom of v0.1.2).
+
+### Deferred to v0.2
+
+- **DEF1 — Redaction externalisation + `redaction_policy_hash`**:
+  external `.agentguard/redaction.json` is *not* introduced in
+  v0.1.3 because the audit chain has no way to record which policy
+  version produced which `payload`. v0.2 will land `migration 006`
+  with `audit_events.redaction_policy_hash`, the matching
+  `redactPayload(value, policyHash)` overload, and an
+  `integrity-check` extension. RFC `docs/rfcs/0001-redaction-policy-
+  hash.md` to be drafted before code.
+- **DEF2 — Remove deprecated HITL aliases** (`evaluateHitl`,
+  `evaluateHitlForTask`).
+- **DEF3 — MCP tools namespace split** (`tools/read`, `tools/write`,
+  `tools/audit`) — v0.2 if MCP clients reach the threshold.
+- **H5 mid-term** — `schema_metadata` table and
+  `assertGenesisHash()` runtime check.
+
+### Refused (proportionality)
+
+- `changesets` introduction — appropriate at 2+ contributors only
+- `claims.yaml` structured registry + auto-generated README — appropriate
+  at 10+ claims only
+- `claim-check` natural-language negation parsing (`grep "no CI"`) —
+  high false-positive rate, replaced by quarterly checklist in DoD
+- ESLint rule / `protectedRouter()` wrapper enforcing `requireToken` —
+  appropriate at 3+ external PRs adding routes
+- Immediate rename of `evaluateHitl` → `evaluateStepHitl` (no
+  deprecation) — would have been a SemVer breaking change for the
+  REST `/hitl/evaluate` consumer
+
+### Verified
+
+- `pnpm -r build`: green
+- `pnpm -r test`: 38/38 pass (core 30, server 8)
+- `pnpm pack -w packages/mcp-server`: tarball contains
+  `dist/index.js` (executable, with shebang), workspace deps
+  resolved to concrete versions
+
 ## [0.1.2] — 2026-04-23
 
 ### Context
@@ -129,7 +250,7 @@ only source change is `app.ts` reading version dynamically from root
 - Release Gate concept as a reusable skill — deferred until a second
   repository demonstrates the same pattern (YAGNI).
 
-
+## [0.1.1] — 2026-04-23
 
 ### Context
 

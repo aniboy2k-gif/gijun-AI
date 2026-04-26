@@ -4,6 +4,9 @@
  * Supports STDIO (default) and Streamable HTTP transports.
  * Tools call packages/server REST API (single-entry-point contract #1).
  */
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import {
   CallToolRequestSchema,
@@ -12,6 +15,22 @@ import {
 import { RestClient, RestError } from './client.js'
 import { TOOLS, findTool } from './tools.js'
 import { startStdio, startHttp } from './transports.js'
+
+// Read this package's version dynamically so MCP serverInfo.version is
+// never out-of-sync with package.json (resolves DA-chain HIGH [H1]).
+// Both dist (packages/mcp-server/dist/index.js) and tsx dev (.../src/index.ts)
+// resolve the parent directory's package.json correctly.
+function readPackageVersion(): string {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const pkgPath = resolve(here, '..', 'package.json')
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string }
+    return pkg.version ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+const PACKAGE_VERSION = readPackageVersion()
 
 const TRANSPORT = (process.env['AGENTGUARD_MCP_TRANSPORT'] ?? 'stdio').toLowerCase()
 const SERVER_URL = process.env['AGENTGUARD_SERVER_URL'] ?? 'http://127.0.0.1:3456'
@@ -29,7 +48,7 @@ if (TRANSPORT === 'http' && !MCP_TOKEN) {
 const client = new RestClient(SERVER_URL, REST_TOKEN)
 
 const server = new Server(
-  { name: 'agentguard', version: '0.1.0' },
+  { name: 'agentguard', version: PACKAGE_VERSION },
   { capabilities: { tools: {} } },
 )
 
