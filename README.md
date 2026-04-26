@@ -10,7 +10,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.1%20alpha-yellow)
+![status](https://img.shields.io/badge/status-v0.2%20alpha-yellow)
 
 **Status: personal single-user tool — not a production dependency.** The HITL gate is a self-approval speed-bump for a solo developer, not multi-party governance. Fork the project if you need team mode, RBAC, or multi-user separation-of-duties.
 
@@ -80,7 +80,7 @@ node packages/server/dist/server.js
 
 ```bash
 curl -s http://127.0.0.1:3456/health
-# → {"ok":true,"version":"<package.json version>"}  # e.g. "0.1.1"
+# → {"ok":true,"version":"<package.json version>"}  # e.g. "0.2.0"
 
 curl -s -X POST http://127.0.0.1:3456/tasks \
   -H "X-AgentGuard-Token: $AGENTGUARD_TOKEN" \
@@ -384,8 +384,8 @@ Each ASI claim below carries a verification label so readers know which claims a
 | ASI01 Prompt Injection | `[passed]` | HITL gate enforced (`hitl-enforcement.test.ts`) + policy engine `deny` effect |
 | ASI02 Insecure Output Handling | `[passed]` | SHA-256 audit chain, `audit-chain.test.ts`, `chain.test.ts` |
 | ASI03 Training Data Poisoning | `[out of scope]` | Upstream model hygiene is the provider's responsibility |
-| ASI04 Model DoS | `[pending E2E]` | rate_limit advisory check + budget advisory status — **no end-to-end blocking test** (v0.2 roadmap) |
-| ASI05 Supply Chain | `[pending]` | `pnpm-lock.yaml` pinned, no automated SBOM / Dependabot yet (v0.2 roadmap) |
+| ASI04 Model DoS | `[pending E2E]` | rate_limit advisory check + budget advisory status — **no end-to-end blocking test** (deferred to v0.3+) |
+| ASI05 Supply Chain | `[passed: scoped]` | `pnpm-lock.yaml` pinned + Dependabot grouping introduced in v0.1.4 (runtime/tooling/major-updates separated, security PRs ungrouped); automated SBOM and provenance gates deferred to v0.3+ |
 | ASI06 Sensitive Info Disclosure | `[passed: scoped]` | `redactPayload` + `original_hash`-based chain verification — **scoped: 4 key patterns only** (sk-, sk-ant-, Bearer, ghp_); other-vendor keys + PII are operator-handled |
 | ASI07 Insecure Plugin Design | `[passed]` | Two independent tokens (REST + MCP) — `middleware/auth.ts`, `transports.ts` |
 | ASI08 Excessive Agency | `[passed]` (v0.1.1) | `hitl-enforcement.test.ts`, `task-atomicity.test.ts` — **was documented but not enforced in v0.1.0** |
@@ -427,7 +427,7 @@ Each ASI claim below carries a verification label so readers know which claims a
 ### ASI06 — Sensitive Information Disclosure
 
 **Countermeasure**: redaction via `payload` blank + `original_hash` preservation. Subject-access-rights requests can blank PII without breaking the audit chain.
-**Scope (honest)**: `redactPayload` matches **4 patterns** at the time of writing: `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…` (see `audit/service.ts:7-12`). It does **not** match AWS access keys (`AKIA…`), GCP API keys, Stripe `sk_live_…`, Slack tokens (`xoxb-…`), JWTs, OpenAI Project keys, or PII (emails, phone numbers, KR resident IDs). Externalising the pattern set is on the v0.2 roadmap together with `audit_events.redaction_policy_hash` so audit reproducibility survives policy changes. Until then, broader redaction is the operator's responsibility — see [`docs/legal.md`](./docs/legal.md).
+**Scope (honest)**: `redactPayload` matches **4 patterns** at the time of writing: `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…` (see `audit/service.ts:7-12`). It does **not** match AWS access keys (`AKIA…`), GCP API keys, Stripe `sk_live_…`, Slack tokens (`xoxb-…`), JWTs, OpenAI Project keys, or PII (emails, phone numbers, KR resident IDs). Externalising the pattern set is partially complete: v0.2.0 introduced [`docs/audit-event-schema.md`](./docs/audit-event-schema.md) (SSOT for the `audit_events` table shape, hash-chain semantics, and redaction contract) and `pnpm sync:readme` (regenerator that pins the pattern table below to `packages/core/src/audit/service.ts`). Adding `audit_events.redaction_policy_hash` so audit reproducibility survives policy changes is deferred to v0.3+. Until then, broader redaction is the operator's responsibility — see [`docs/legal.md`](./docs/legal.md).
 **Modules**: `packages/core/src/audit/service.ts` (`redactPayload`)
 
 **Pattern table (kept in sync with code via `pnpm sync:readme`):**
@@ -468,9 +468,9 @@ Each ASI claim below carries a verification label so readers know which claims a
 
 ## Known limitations
 
-v0.1 is an alpha for **solo developers running a single local instance**. Things that are explicitly deferred:
+v0.2 is an alpha for **solo developers running a single local instance**. Things that are explicitly deferred:
 
-- **Single-instance only** — SQLite with WAL handles one process safely; team mode is v0.3.
+- **Single-instance only** — SQLite with WAL handles one process safely; team mode is out of scope (fork required, see below).
 - **Advisory-only budget** — `checkBudget()` never halts execution. If you need a hard cap, your caller must read the status and stop.
 - **No distributed audit** — hash chain is a single file, not replicated.
 - **No auth provider integration** — one `AGENTGUARD_TOKEN` per server, rotated by hand.
@@ -486,20 +486,39 @@ These are honest scope calls, not oversights. They will move out of this list on
 
 Level-based public status framework and the L2 "reference-only public" Definition of Done checklist are in [`docs/public-status-dod.md`](./docs/public-status-dod.md). See [`docs/adoption-scenarios.md`](./docs/adoption-scenarios.md) for a by-scenario fit matrix (✓ personal learning / ✗ team adoption / etc.).
 
-### v0.2 (next)
+### v0.2.0 (released 2026-04-26)
 
-- Playbook CRUD in MCP
-- `POST /policies/:id` PATCH for edit-in-place (currently only activate/deactivate)
-- Incident pattern promotion via MCP
-- Minimal GitHub Actions workflow (build + test on push)
-- `packages/web` read-only dashboard (Vite + shadcn/ui)
-- JSONL export of audit log for external retention
+DA-chain–driven hardening across two patches (v0.1.4 + v0.2.0). No product behaviour changes; no DB migrations. Test count grew from 12 to 78.
 
-### v0.3+ (long-term, may never ship)
+- **Lint** — Biome 2.4.13 with a small wrapper at `scripts/lint.mjs` (workaround for a pnpm 10 + macOS bin shim issue) (v0.1.4)
+- **CI** — minimal GitHub Actions workflow (`.github/workflows/ci.yml`) with build + test + typecheck + lint on push/PR; `Verify audit-event-schema SSOT` step on ubuntu (v0.1.4 + v0.2.0)
+- **Release gate** — `.github/workflows/release.yml` 4-stage gate (versioning regex / changelog / CI workflow_call / build artifact) triggered by `v*` tag push (v0.1.4)
+- **Branch + tag protection** — main branch protection ruleset + tag protection ruleset for `v*` (v0.1.4)
+- **Dependabot grouping** — runtime / tooling / major-updates 3 groups, security PRs ungrouped (v0.1.4)
+- **ASI06 SSOT** — `docs/audit-event-schema.md` (canonical schema for `audit_events` columns + hash chain semantics + redaction contract) + `scripts/verify-audit-schema.mjs` CI gate (v0.2.0)
+- **README sync** — `pnpm sync:readme` regenerates the ASI06 pattern table from `packages/core/src/audit/service.ts` (v0.1.4)
+- **Proportionality thresholds** — external SSOT pointer at `docs/proportionality-thresholds.md` referencing `~/.claude/da-tools/thresholds.json` (v0.1.4)
+- **Contract tests** — `tools-registry` (17 MCP tools, prefix-policy classification) + `tools-zod-negative` (per-tool invalid-input matrix) (v0.2.0)
+- **WRITE failure matrix** — 8 scenarios covering `appendAuditEvent` contract: zod throw / valid insert / default payload / 10KB payload / 3-event chain / redaction-vs-originalHash separation / mid-stream throw recovery / fail-fast on missing `audit_events` table (v0.2.0)
+- **Audit-tampering tests** — 3 detection cases (prev_hash mutation, middle-row deletion, chain_hash mutation) verified by `verifyChain()` (v0.2.0)
+- **Deferred RFC memo** — `docs/v0.2-deferred-rfc-evaluation.md` records cost/benefit/trigger for H6/M3/M5 (self-check automation review, RFC template, gate matrix doc) so reopening the work has a receipt (v0.2.0)
 
-- Plugin API for custom HITL axes
-- LangChain / Mastra / other-framework adapters
-- Continuous integration of OWASP ASI checks
+### v0.3+ (deferred / event-triggered)
+
+The following items have explicit reopening triggers — they will move forward when the trigger fires, not on a date.
+
+- **Zod 4 migration** (split RFC: validation / execution / migration / rollback) — triggered by zod 3 EOL or v0.3.0 RFC approval. PR #6 (zod 3.25 → 4.3) was closed after a Tier 1 architecture DA chain found audit-chain hash-equality risk and `z.record` schema breaking; see PR #6 close comment for the full reasoning.
+- **TypeScript 7.0 direct migration** — triggered by TS 7.0 RC release (skip the 6.0 transition release). PR #4 (typescript 5.9 → 6.0) was closed after a Tier 1 DA chain found tsup 8.5.1 + TS 6.0 DTS-build incompatibility on macOS via the `baseUrl` deprecation→error path.
+- **`audit_events.redaction_policy_hash`** so audit reproducibility survives redaction-policy changes (ASI06 long-tail).
+- **Provenance / SBOM publish gate** (RFC 0002) — required before npm publish; release.yml has stub stages for it.
+- **Publish-approval gate** (release.yml stages 5–6, currently stubbed).
+- **ASI04 end-to-end DoS blocking test** (currently `[pending E2E]`).
+- **`packages/web`** read-only dashboard (Vite + shadcn/ui) — slot exists but empty.
+- **Playbook CRUD in MCP** / **Incident pattern promotion via MCP** / **`POST /policies/:id` PATCH for edit-in-place**.
+- **JSONL export of audit log** for external retention.
+- **Plugin API** for custom HITL axes.
+- **LangChain / Mastra / other-framework adapters**.
+- **Continuous integration of OWASP ASI checks**.
 
 ### Out of scope (fork required)
 
@@ -539,7 +558,10 @@ gijun-ai/
 ```bash
 pnpm install
 pnpm build                   # builds all three packages (tsup for core, tsc for server/mcp-server)
-pnpm test                    # runs core unit tests (node --test)
+pnpm test                    # runs all package tests across core/server/mcp-server (node --test)
+pnpm lint                    # Biome lint via scripts/lint.mjs wrapper
+pnpm sync:readme:check       # verifies the ASI06 pattern table is in sync with code
+pnpm verify:audit-schema     # verifies docs/audit-event-schema.md against migrations/*.sql
 ```
 
 ### Verify the audit chain of an existing DB
