@@ -4,6 +4,122 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.1.4] — 2026-04-26
+
+### Context
+
+Second DA-chain pass on the v0.1.3 baseline (Tier 1 — Gemini → ChatGPT →
+Claude Web → DeepSeek, `architecture` role). The earlier 17-issue patch
+shipped with v0.1.3, but a fresh review surfaced 14 follow-up gaps. v0.1.4
+addresses **8 of them** (5 HIGH + 3 MEDIUM); the other 6 (the C1 single-
+transaction-contract test bundle, H6 self-check automation, M3/M4 RFC
+formalisation, M5 gate-matrix doc) are deferred to v0.2 because they
+require new test infrastructure that is sized for an RFC, not a patch.
+
+No product behaviour changes. No DB migrations.
+
+### Added
+
+- **Biome** (`@biomejs/biome ^2.4.13`) as the project's lint stop-gap,
+  configured to error on real bugs (`noDoubleEquals`, `noUnusedImports`)
+  and warn on style drift (`noConsole`, `noExplicitAny`, `noTsIgnore`).
+  `biome.json` at the repo root, plus `pnpm lint` / `pnpm lint:fix` via a
+  small wrapper at `scripts/lint.mjs` (workaround for a pnpm 10 + macOS
+  combination that breaks the bundled bin shim — Linux CI is unaffected,
+  see the comment in the wrapper). Closes H1.
+- **Branch + tag protection on `main`** (GitHub repository ruleset):
+  `allow_force_pushes=false`, `allow_deletions=false`, required status
+  checks: `Build & test on Node 22 / ubuntu-latest`, `… / macos-latest`,
+  `Verify README claims match code`, `Analyze JavaScript/TypeScript`.
+  Tag-protection ruleset (`v*`) blocks deletion / non-fast-forward /
+  update on version tags. `enforce_admins=false` so the maintainer can
+  still fix CI in an emergency. Closes H2.
+- **Typecheck CI step** — `pnpm -r exec tsc --noEmit` plus a separate
+  `tsc -p tsconfig.test.json --noEmit` pass for `core` and `server` test
+  trees so test-only type errors can no longer hide behind a green
+  `pnpm test` (test compilation already typechecks at run time, but now
+  the typecheck has its own named step). Closes H3.
+- **Release workflow** — `.github/workflows/release.yml` with the four
+  immediate gates: versioning (tag regex), changelog (`## [VERSION]`
+  header), CI (`workflow_call` to `ci.yml`), build (re-pack mcp-server
+  tarball + publish-contract checks). The two escalation gates
+  (provenance/SBOM, publish approval) are intentionally absent; they
+  land with RFC 0002 when npm publish is enabled. Includes an
+  auto-extracted GitHub-release notes step. Closes H4 immediate scope;
+  H4 escalation deferred behind `proportionality_thresholds`.
+- **ASI06 redaction-boundary test** — `redaction-boundary.test.ts` (7
+  cases, all green) covers all 5 boundary paths the README claims:
+  input, output (read-back), log (operator pattern), exception (operator
+  pattern), audit-event row (full DB round-trip + chain-hash shape).
+  Negative-scope assertions pin the README's "scoped: 4 patterns" claim
+  by asserting that AWS / Stripe / Slack / JWT / email patterns
+  deliberately survive `redactPayload` — if a future patch widens
+  coverage without updating the README, this test fails. Closes H5.
+- **`pnpm sync:readme` / `:check`** — `scripts/sync-readme.mjs` extracts
+  `REDACT_PATTERNS` from `packages/core/src/audit/service.ts` and
+  rewrites a `<!-- generated:asi06-patterns -->` block in `README.md`.
+  `--check` mode fails CI on drift. Closes M2 (single source of truth).
+- **`docs/proportionality-thresholds.md`** — one-page reference to the
+  external SSOT (`~/.claude/da-tools/thresholds.json` →
+  `proportionality_thresholds`). Closes M4. The numeric thresholds
+  themselves live in the maintainer's cross-project SSOT, not in the
+  repo, to avoid drift between projects sharing the same "when do I
+  escalate?" decision.
+
+### Changed
+
+- **`.github/dependabot.yml`** — split the previous `all-deps` group
+  into `runtime` (production deps, minor/patch), `tooling` (dev/build,
+  minor/patch), and `major-updates` (any package, major bumps). Security
+  updates are intentionally **not** grouped so each lands in its own PR
+  for fast review. Closes M1.
+- **Workflow permissions** — top-level `permissions: contents: read` on
+  `ci.yml` and `claim-check.yml`. The new `release.yml` defaults to
+  `contents: read` and elevates only the GitHub-release job to
+  `contents: write`. `codeql.yml` already had narrow job-level
+  permissions and was left alone. Part of H2.
+- **`.npmrc`** — `reporter=append-only` so the lint job's output is
+  visible in CI logs (default reporter strips it under non-TTY).
+- **`@biomejs/biome`** added to `pnpm.onlyBuiltDependencies` so the
+  native binary postinstall actually runs.
+
+### Deferred to v0.2
+
+- **C1 single-transaction-contract test bundle** (5 sub-requirements:
+  tool registry contract / zod negative path / WRITE failure matrix
+  (8 core scenarios) / audit-chain tampering / audit-event schema SSOT
+  + CI drift check). Sized for a dedicated RFC because the failure
+  matrix and the audit-event-schema doc both need their own design.
+- **H6 self-check automation** — gated on RFC 0003 cost/benefit review.
+- **M3 RFC 6-section template** — escalation triggered only at
+  `contributor_count ≥ 2` (currently 1).
+- **M5 gate-matrix doc** — small but cohabits with the v0.2 RFC index;
+  bundled there.
+- **C2 publish-epoch tagging + H4 escalation gates (provenance,
+  publish approval)** — both fire only when npm publish is enabled
+  (RFC 0002). Stubs are present in `release.yml` for orientation.
+
+### Refused (proportionality)
+
+- Auto-redaction of `console.log` and `error.stack` — the operator-
+  applied `redactPayload` pattern is asserted by paths 3 and 4 of
+  `redaction-boundary.test.ts`; auto-redaction at runtime is a feature
+  request, not a bug, and the README is honest about the boundary.
+- Fixing the four remaining Biome warnings (`noUnusedVariables` in
+  `knowledge/retriever.ts`, `noTsIgnore` + 2× `noNonNullAssertion` in
+  `lib/paths.ts`) — surgical-changes principle: those code patterns are
+  intentional, the warnings are advisory, and rewriting them belongs in
+  a separate PR with its own justification.
+
+### Verified
+
+- `pnpm -r build`: green (core via tsup, server + mcp-server via tsc).
+- `pnpm -r test`: 45 / 45 pass (core 37 — 8 new redaction-boundary
+  cases on top of v0.1.3's 30; server 8 unchanged).
+- `pnpm -r exec tsc --noEmit`: 0 errors.
+- `pnpm lint` (Biome): 0 errors, 4 advisory warnings (documented above).
+- `pnpm sync:readme:check`: in sync (4 patterns).
+
 ## [0.1.3] — 2026-04-26
 
 ### Context

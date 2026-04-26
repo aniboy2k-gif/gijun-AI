@@ -1,6 +1,6 @@
 {
   "name": "@gijun-ai/core",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Core audit/HITL/policy engine for gijun-ai (personal single-user workbench)",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
