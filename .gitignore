@@ -7,3 +7,4 @@ dist-test
 *.db-shm
 *.db-wal
 .DS_Store
+prompt_plan.md

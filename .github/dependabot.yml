@@ -9,9 +9,26 @@ updates:
     labels:
       - dependencies
     groups:
-      all-deps:
+      # Production runtime deps — review carefully (express, zod, @modelcontextprotocol/sdk, ...)
+      runtime:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      # Dev/build/tooling — typescript, tsup, tsx, biome, @types/*, etc.
+      tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      # Major version bumps — separate PR per dep (breaking changes need isolated review)
+      major-updates:
         patterns:
           - "*"
+        update-types:
+          - major
+    # Security updates: not grouped (each gets its own PR for prompt review).
+    # Dependabot opens security PRs outside groups by default.
 
   - package-ecosystem: github-actions
     directory: /

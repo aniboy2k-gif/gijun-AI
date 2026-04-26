@@ -19,6 +19,9 @@ on:
       - ".github/claim-map.yml"
       - ".github/workflows/claim-check.yml"
 
+permissions:
+  contents: read
+
 jobs:
   verify-claims:
     name: Verify README claims match code
