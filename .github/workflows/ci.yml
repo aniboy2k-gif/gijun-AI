@@ -38,6 +38,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm lint
 
+      - name: Build all packages
+        run: pnpm -r build
+
+      # Typecheck after build so workspace types (`@gijun-ai/core` via
+      # `core/dist/index.d.ts`) are resolvable. The build itself
+      # typechecks; this step is a defensive fast verifier.
       - name: Typecheck (no emit)
         if: matrix.os == 'ubuntu-latest'
         run: pnpm -r exec tsc --noEmit
@@ -53,9 +59,6 @@ jobs:
               echo "::endgroup::"
             fi
           done
-
-      - name: Build all packages
-        run: pnpm -r build
 
       - name: Run tests
         run: pnpm -r test
