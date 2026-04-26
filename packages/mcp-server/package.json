@@ -23,7 +23,7 @@
     "@gijun-ai/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.11.4",
     "express": "^5.1.0",
-    "zod": "^3.24.3",
+    "zod": "^4.3.6",
     "zod-to-json-schema": "^3.24.1"
   },
   "devDependencies": {
