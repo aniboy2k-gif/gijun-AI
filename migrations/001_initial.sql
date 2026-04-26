@@ -133,6 +133,11 @@ CREATE TABLE verifications (
 -- ============================================================
 CREATE TABLE audit_events (
   id            INTEGER PRIMARY KEY,
+  -- 64 zero hex digits: chain sentinel for the first row.
+  -- MUST match GENESIS_HASH in packages/core/src/audit/chain.ts.
+  -- SQL cannot import the TS constant; future v0.2 work proposes a
+  -- schema_metadata table with assertGenesisHash() to make this verifiable
+  -- at startup (final.txt H5중기).
   prev_hash     TEXT    NOT NULL DEFAULT ('0000000000000000000000000000000000000000000000000000000000000000'),
   content_hash  TEXT    NOT NULL,
   chain_hash    TEXT    NOT NULL,

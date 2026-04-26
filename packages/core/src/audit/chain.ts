@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto'
 
+// MUST match the audit_events.prev_hash DEFAULT in migrations/001_initial.sql
+// (64 zero hex digits — SHA-256 sentinel for the chain's first row).
+// SQL cannot import this constant; runMigrations() validates the schema chain
+// at startup but the literal value is duplicated by necessity. See also
+// the schema_metadata table proposed in v0.2 (final.txt H5중기).
 const GENESIS_HASH = '0'.repeat(64)
 
 function canonicalJson(value: unknown): string {
