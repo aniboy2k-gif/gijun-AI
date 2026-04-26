@@ -4,6 +4,81 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.2.0] — 2026-04-26
+
+### Context
+
+The v0.1.4 plan deferred 6 follow-ups, of which 5 form a CRITICAL contract-test
+bundle (C1 sub-1..5) and 1 is an evaluation memo (H6/M3/M5). v0.2.0 ships all
+6. The bundle promotes contracts that previously lived only in code comments
+("17 tools, 9 READ + 8 WRITE", "audit chain binds to originalHash", "redaction
+is at storage time only") into machine-checked invariants.
+
+No product behaviour changes. No DB migrations. Test count: 78 (was 45).
+
+### Added
+
+- **`tools-registry.test.ts`** — 13 contract assertions on the MCP tool
+  registry: length 17, unique snake_case names, every tool has a
+  `z.ZodType` schema and a non-null `inputSchema` and a function handler,
+  prefix-policy classification (READ vs WRITE), 9/8 split, WRITE
+  descriptions contain "WRITES", READ descriptions don't. Closes C1 sub-1.
+- **`tools-zod-negative.test.ts`** — Per-tool minimum-invalid input
+  fixtures covering missing-required, empty-string, enum-violation,
+  type-mismatch, and out-of-range cases. Universal checks: every tool
+  rejects array/null/string/number inputs. Sanity-pinned: 5 all-optional
+  schemas (`list_tasks`/`tail_audit`/`get_cost_summary`/`check_budget`/
+  `verify_audit_integrity`) accept `{}`; the other 12 must throw. Closes
+  C1 sub-2.
+- **`write-failure-matrix.test.ts`** — 8 scenarios pinning the
+  `appendAuditEvent` contract: zod-throw / valid insert / default
+  payload / 10KB payload / 3-event chain / redaction-vs-originalHash
+  separation / mid-stream throw recovery / fail-fast on missing
+  `audit_events` table. Closes C1 sub-3.
+- **`audit-tampering.test.ts`** — 3 tampering vectors (prev_hash mutation,
+  middle-row deletion, chain_hash mutation) with red-green precondition
+  asserts. Closes C1 sub-4.
+- **`docs/audit-event-schema.md`** — SSOT for the `audit_events` table
+  shape, hash-chain semantics, redaction contract, change procedure.
+  Section 1 has a marker-bracketed column table that the verifier
+  parses.
+- **`scripts/verify-audit-schema.mjs`** + `pnpm verify:audit-schema` +
+  ci.yml step — applies all migrations to an in-memory DB, reads
+  `PRAGMA table_info(audit_events)`, diffs against the doc's column
+  table. Exits 1 on any drift. Closes C1 sub-5.
+- **`docs/v0.2-deferred-rfc-evaluation.md`** — Cost / current-benefit /
+  trigger memo for H6 (self-check automation review), M3 (RFC
+  6-section template), M5 (release gate matrix doc). Each entry names
+  the specific signal that should reopen the work, not "later".
+
+### Changed
+
+- `.github/workflows/ci.yml` — `Typecheck tests` step generalized from
+  hardcoded `core`/`server` to `packages/*` (any package with a
+  `tsconfig.test.json` is auto-included). New `Verify audit-event-schema
+  SSOT` step on ubuntu-only.
+- `packages/mcp-server` — added `tsconfig.test.json` and a `test`
+  script following the existing core/server pattern.
+
+### Deferred
+
+- **C2 publish-epoch tagging** — fires when an npm publish is first
+  attempted (RFC 0002 / provenance gate). Out of scope until then.
+- **H4 release-gate stages 5–6** (provenance/SBOM, publish-approval) —
+  same trigger as C2.
+- See `docs/v0.2-deferred-rfc-evaluation.md` for H6/M3/M5 triggers.
+
+### Verified
+
+- `pnpm install --frozen-lockfile && pnpm -r build && pnpm -r test`:
+  78/78 pass (48 core + 22 mcp-server + 8 server)
+- `pnpm lint`: 0 errors (4 advisory warnings, expected)
+- `pnpm sync:readme:check`: in sync (4 patterns)
+- `pnpm verify:audit-schema`: in sync (16 columns)
+- mcp-server publish contract: tarball builds, `dist/index.js` is
+  executable with shebang, no `workspace:*` references in
+  packed package.json (re-verified by Phase 0 handoff-verify).
+
 ## [0.1.4] — 2026-04-26
 
 ### Context

@@ -1,6 +1,6 @@
 {
   "name": "gijun-ai",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Personal single-user AI agent audit/verification workbench — 기준을 세우고, 검증하며, 학습한다",
   "license": "MIT",
   "private": true,
