@@ -464,11 +464,22 @@ v0.1은 **단일 로컬 인스턴스를 운영하는 1인 개발자**를 위한 
 - `packages/web` 읽기 전용 대시보드 (Vite + shadcn/ui)
 - 외부 보관을 위한 감사 로그 JSONL export
 
-### v0.3+ (장기, 출시 미확정)
+### v0.3+ (장기, 이벤트 트리거)
 
-- 커스텀 HITL 축을 위한 플러그인 API
-- LangChain / Mastra / 기타 프레임워크 어댑터
-- OWASP ASI 체크의 지속적 통합
+다음 항목들은 명시적 재개 트리거가 있습니다 — 날짜가 아니라 트리거 발동 시 진행됩니다.
+
+- **Zod 4 마이그레이션** — 구체적 마이그레이션 윈도우가 열릴 때까지 의도적 보류. Zod 4가 감사 해시 안정성에 영향을 줄 수 있는 검증 의미를 변경하기 때문에 연기됨. 마무리 근거는 PR #6 참조.
+- **TypeScript 7.0 직접 마이그레이션** — TS 7.0 RC 릴리스가 트리거 (6.0 전환 릴리스 건너뛰기). PR #4 (typescript 5.9 → 6.0)는 Tier 1 DA 체인이 macOS에서 tsup 8.5.1 + TS 6.0 DTS 빌드의 `baseUrl` deprecation→error 경로 비호환을 발견한 후 닫힘.
+- **redaction 정책 변경 간 감사 재현성** (`audit_events.redaction_policy_hash`, ASI06 장기). 추적: #9.
+- **릴리스 아티팩트의 SBOM 및 provenance** — npm publish 전 필수; release.yml에 stub stage 있음. 추적: #8.
+- **Publish 승인 게이트** (release.yml 5~6단계, 현재 stub).
+- **악용 요청이 실제 차단됨을 증명하는 E2E 테스트** (ASI04, 현재 `[pending E2E]`). 추적: #7.
+- **`packages/web`** 읽기 전용 대시보드 (Vite + shadcn/ui) — 슬롯 존재하지만 비어 있음.
+- **MCP에 playbook CRUD** / **MCP를 통한 incident 패턴 승격** / **제자리 편집을 위한 `POST /policies/:id` PATCH**.
+- **외부 보관을 위한 감사 로그 JSONL export**.
+- **커스텀 HITL 축을 위한 플러그인 API**.
+- **LangChain / Mastra / 기타 프레임워크 어댑터**.
+- **OWASP ASI 체크의 지속적 통합**.
 
 ### 범위 외 (포크가 필요함)
 
