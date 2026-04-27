@@ -455,14 +455,22 @@ v0.1은 **단일 로컬 인스턴스를 운영하는 1인 개발자**를 위한 
 
 레벨 기반 공개 상태 프레임워크와 L2 "참조 전용 공개" Definition of Done 체크리스트는 [`docs/public-status-dod.md`](./docs/public-status-dod.md)에 정리되어 있습니다. 시나리오별 적합성 매트릭스(✓ 개인 학습 / ✗ 팀 채택 등)는 [`docs/adoption-scenarios.md`](./docs/adoption-scenarios.md)를 참조하세요.
 
-### v0.2 (다음)
+### v0.2.0 (2026-04-26 출시)
 
-- MCP에 playbook CRUD
-- 제자리 편집을 위한 `POST /policies/:id` PATCH (현재는 activate/deactivate만)
-- MCP를 통한 incident 패턴 승격
-- 최소 GitHub Actions 워크플로 (push 시 build + test)
-- `packages/web` 읽기 전용 대시보드 (Vite + shadcn/ui)
-- 외부 보관을 위한 감사 로그 JSONL export
+두 패치(v0.1.4 + v0.2.0)에 걸친 DA-chain 기반 안정화. 제품 동작 변경 없음, DB 마이그레이션 없음. 테스트 수 12 → 78.
+
+- **린트** — Biome 2.4.13 + `scripts/lint.mjs` 작은 래퍼 (pnpm 10 + macOS bin shim 이슈 우회) (v0.1.4)
+- **CI** — 최소 GitHub Actions 워크플로 (`.github/workflows/ci.yml`) — push/PR 시 build + test + typecheck + lint, ubuntu 에서 `Verify audit-event-schema SSOT` 단계 (v0.1.4 + v0.2.0)
+- **릴리스 게이트** — `.github/workflows/release.yml` 4단계 게이트 (versioning regex / changelog / CI workflow_call / build artifact), `v*` 태그 push 트리거 (v0.1.4)
+- **브랜치 + 태그 보호** — main 브랜치 보호 ruleset + `v*` 태그 보호 ruleset (v0.1.4)
+- **Dependabot 그룹화** — runtime / tooling / major-updates 3 그룹, security PR 은 ungrouped (v0.1.4)
+- **ASI06 SSOT** — `docs/audit-event-schema.md` (`audit_events` 컬럼 + 해시 체인 의미 + redaction 계약의 정규 스키마) + `scripts/verify-audit-schema.mjs` CI 게이트 (v0.2.0)
+- **README 동기화** — `pnpm sync:readme` 가 `packages/core/src/audit/service.ts` 에서 ASI06 패턴 표 재생성 (v0.1.4)
+- **Proportionality thresholds** — 외부 SSOT 포인터 `docs/proportionality-thresholds.md` 가 `~/.claude/da-tools/thresholds.json` 참조 (v0.1.4)
+- **계약 테스트** — `tools-registry` (17개 MCP 도구, prefix-policy 분류) + `tools-zod-negative` (도구별 invalid-input 매트릭스) (v0.2.0)
+- **WRITE 실패 매트릭스** — `appendAuditEvent` 계약을 검증하는 8 시나리오: zod throw / 정상 insert / 기본 payload / 10KB payload / 3-event 체인 / redaction-vs-originalHash 분리 / 중간 throw 복구 / `audit_events` 테이블 부재 시 fail-fast (v0.2.0)
+- **감사 변조 테스트** — 3 검출 케이스 (prev_hash 변조, 중간 행 삭제, chain_hash 변조) `verifyChain()` 으로 검증 (v0.2.0)
+- **Deferred RFC 메모** — `docs/v0.2-deferred-rfc-evaluation.md` 가 H6/M3/M5 (자가 검증 자동화 검토, RFC 템플릿, 게이트 매트릭스 문서) 의 비용/이익/트리거 박제 — 작업 재개 시 영수증 (v0.2.0)
 
 ### v0.3+ (장기, 이벤트 트리거)
 
