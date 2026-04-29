@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { TOOLS, findTool } from '../tools.js'
 
 // Naming policy from tools.ts module header.
-const WRITE_PREFIXES = ['create_', 'update_', 'add_', 'append_', 'promote_', 'approve_', 'report_']
+const WRITE_PREFIXES = ['create_', 'update_', 'add_', 'append_', 'promote_', 'approve_', 'report_', 'nominate_', 'revoke_', 'reject_']
 const READ_PREFIXES = ['get_', 'list_', 'search_', 'tail_', 'verify_', 'check_', 'preflight_']
 
 function classify(name: string): 'read' | 'write' | 'unknown' {
@@ -13,8 +13,8 @@ function classify(name: string): 'read' | 'write' | 'unknown' {
   return 'unknown'
 }
 
-test('tools-registry: TOOLS length is exactly 17 (READ 9 + WRITE 8)', () => {
-  assert.equal(TOOLS.length, 17)
+test('tools-registry: TOOLS length is exactly 22 (READ 10 + WRITE 12)', () => {
+  assert.equal(TOOLS.length, 22)
 })
 
 test('tools-registry: every tool name is unique', () => {
@@ -62,11 +62,11 @@ test('tools-registry: every tool name classifies as either read or write (no unk
   }
 })
 
-test('tools-registry: 9 READ tools and 8 WRITE tools by prefix policy', () => {
+test('tools-registry: 10 READ tools and 12 WRITE tools by prefix policy', () => {
   const reads = TOOLS.filter(t => classify(t.name) === 'read')
   const writes = TOOLS.filter(t => classify(t.name) === 'write')
-  assert.equal(reads.length, 9, '9 READ tools expected')
-  assert.equal(writes.length, 8, '8 WRITE tools expected')
+  assert.equal(reads.length, 10, '10 READ tools expected')
+  assert.equal(writes.length, 12, '12 WRITE tools expected')
 })
 
 test('tools-registry: every WRITE tool description contains "WRITES"', () => {

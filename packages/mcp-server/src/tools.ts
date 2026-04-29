@@ -1,6 +1,6 @@
 /**
- * MCP tool definitions — 17 tools mapped 1:1 to REST endpoints.
- * Naming policy: READ prefix (get_/list_/search_/tail_/verify_/check_) or WRITE prefix (create_/update_/add_/append_/promote_/approve_/report_).
+ * MCP tool definitions — 22 tools mapped 1:1 to REST endpoints.
+ * Naming policy: READ prefix (get_/list_/search_/tail_/verify_/check_) or WRITE prefix (create_/update_/add_/append_/promote_/approve_/report_/nominate_/revoke_/reject_).
  * preflight_check and check_budget are READ-only diagnostics — their results MAY be ignored, and execution tools re-validate server-side.
  */
 import { z } from 'zod'
@@ -123,6 +123,40 @@ const CreateKnowledgeSchema = z.object({
 
 const PromoteKnowledgeSchema = z.object({ id: z.number().int() })
 
+// Knowledge lifecycle schemas (migration 007+)
+const GetKnowledgeDraftsSchema = z.object({
+  layer: z.enum(['global', 'project', 'incident']).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+})
+
+const CreateDaCandidateSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+  reasoning: z.string().min(1),
+  targetLayer: z.enum(['global', 'project', 'incident']),
+  project: z.string().optional(),
+  domain: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  sourceSessionId: z.string().optional(),
+})
+
+const NominateKnowledgeSchema = z.object({ id: z.number().int() })
+
+const ApproveKnowledgeCandidateSchema = z.object({
+  id: z.number().int(),
+  reason: z.string().optional(),
+})
+
+const RevokeKnowledgeApprovalSchema = z.object({
+  id: z.number().int(),
+  reason: z.string().min(1),
+})
+
+const RejectKnowledgeCandidateSchema = z.object({
+  id: z.number().int(),
+  reason: z.string().min(1),
+})
+
 const ReportIncidentSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
@@ -191,6 +225,34 @@ export const TOOLS: ToolDef[] = [
     (a, c) => c.post(`/knowledge/${a.id}/promote`)),
   def('report_incident', 'Report an incident caused by AI agent behavior. WRITES to DB.', ReportIncidentSchema,
     (a, c) => c.post('/incidents', a)),
+
+  // Knowledge lifecycle tools (migration 007+) — READ +1, WRITE +4
+  def('get_knowledge_drafts',
+    'List knowledge items in draft or candidate status pending HITL review. READ-only.',
+    GetKnowledgeDraftsSchema,
+    (a, c) => {
+      const qs = new URLSearchParams()
+      if (a.layer) qs.set('layer', a.layer)
+      if (a.limit) qs.set('limit', String(a.limit))
+      const suffix = qs.toString() ? `?${qs}` : ''
+      return c.get(`/knowledge/drafts${suffix}`)
+    }),
+  def('create_da_candidate',
+    'WRITES: Pre-fill a knowledge draft from a DA result. Requires explicit user review (nominate → approve) before the item becomes searchable.',
+    CreateDaCandidateSchema,
+    (a, c) => c.post('/knowledge/da-candidate', a)),
+  def('nominate_knowledge_candidate',
+    'WRITES: Nominate a draft knowledge item for HITL approval (draft → candidate).',
+    NominateKnowledgeSchema,
+    (a, c) => c.post(`/knowledge/${a.id}/nominate`)),
+  def('approve_knowledge_candidate',
+    'WRITES: Approve a nominated knowledge candidate (candidate → approved). Item becomes searchable.',
+    ApproveKnowledgeCandidateSchema,
+    (a, c) => c.post(`/knowledge/${a.id}/approve`, { reason: a.reason })),
+  def('revoke_knowledge_approval',
+    'WRITES: Revoke an approved knowledge item (approved → rejected). Requires reason. Item becomes inactive.',
+    RevokeKnowledgeApprovalSchema,
+    (a, c) => c.post(`/knowledge/${a.id}/revoke`, { reason: a.reason })),
 ]
 
 export function findTool(name: string): ToolDef | undefined {
