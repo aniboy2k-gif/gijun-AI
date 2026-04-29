@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express'
 import { z } from 'zod'
-import { createTask, getTask, updateTaskStatus, listTasks, addTaskStep, approveHitl, LIST_MAX_LIMIT } from '@gijun-ai/core'
+import { createTask, getTask, updateTaskStatus, listTasks, addTaskStep, approveHitl, upsertExternalTask, LIST_MAX_LIMIT } from '@gijun-ai/core'
 import { requireToken } from '../middleware/auth.js'
 
 export const tasksRouter: ReturnType<typeof Router> = Router()
@@ -94,8 +94,25 @@ const hitlApproveHandler: RequestHandler = (req, res, next) => {
   } catch (err) { next(err) }
 }
 
+const ExternalSyncBody = z.object({
+  externalSource: z.string().min(1).max(128),
+  externalId: z.string().min(1).max(256),
+  title: z.string().min(1).max(512),
+  description: z.string().max(4096).optional(),
+  status: z.enum(['pending', 'in_progress', 'done', 'cancelled']).optional(),
+})
+
+const externalSyncHandler: RequestHandler = (req, res, next) => {
+  try {
+    const body = ExternalSyncBody.parse(req.body ?? {})
+    const result = upsertExternalTask(body)
+    res.status(result.created ? 201 : 200).json(result)
+  } catch (err) { next(err) }
+}
+
 tasksRouter.get('/', requireToken, listHandler)
 tasksRouter.post('/', requireToken, createHandler)
+tasksRouter.post('/external', requireToken, externalSyncHandler)
 tasksRouter.get('/:id', requireToken, getHandler)
 tasksRouter.patch('/:id/status', requireToken, updateStatusHandler)
 tasksRouter.post('/:id/steps', requireToken, addStepHandler)

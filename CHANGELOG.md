@@ -4,6 +4,35 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.3.1] — 2026-04-29
+
+### Context
+
+P3 of the DA-chain-agreed feature set. Adds bulletin-board → gijun-AI one-way
+outbox integration. CSR lifecycle events (create/done/error) are captured in
+bulletin-board's outbox table and forwarded to gijun-AI's new
+`POST /tasks/external` endpoint via a polling worker. Idempotent upsert ensures
+no duplicate tasks on retry. Test count: 133 (was 126).
+
+### Added
+
+- **`migrations/008_external_sync.sql`** — adds `external_id TEXT` and
+  `external_source TEXT` columns to `tasks`; partial unique index enforces one
+  task per `(external_source, external_id)` pair.
+- **`upsertExternalTask()`** (`packages/core`) — idempotent task upsert for
+  inbound events; emits `task.external_sync` audit event.
+- **`POST /tasks/external`** (`packages/server`) — REST endpoint guarded by
+  existing `requireToken` middleware; returns `201 created=true` or `200
+  created=false`.
+- **`src/db/outbox.js`** (bulletin-board) — `outbox_events` table DDL +
+  `writeOutboxEvent` / `claimPendingEvents` / `markDelivered` / `markFailed`.
+- **`scripts/outbox-worker.js`** (bulletin-board) — polling worker that
+  forwards outbox events to gijun-AI; supports `--once` and `--dry-run` flags.
+- **`scripts/csr-log.js`** hooks (bulletin-board) — silent-fail outbox writes
+  on `create-post`, `done`, and `error` commands.
+
+---
+
 ## [0.3.0] — 2026-04-29
 
 ### Context
