@@ -4,6 +4,33 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.4.0] — 2026-04-29
+
+### Context
+
+P4 of the DA-chain–agreed feature set. Adds `packages/web` — a local read-only dashboard
+served by the existing Express server. 4 tabs: Tasks (5s poll), Audit (integrity badge),
+Cost (period selector), Knowledge (draft highlight). Token-gate with 401/503 error separation.
+DA-verified design (Tier 2, 3 AI: Gemini→ChatGPT→Claude Web).
+
+### Added
+
+- **`packages/web`** — Vite + React 19 + Tailwind v4 (CSS-variable theme, no tailwind.config.ts)
+  + TanStack Query v5.
+- **`TokenGate`** — localStorage token input; `/health` verify on mount (single useRef call);
+  401 vs 503/ECONNREFUSED error separation.
+- **Tasks tab** — 5s `refetchInterval`, `refetchIntervalInBackground: false`,
+  `refetchOnWindowFocus: true`; HITL-wait badge count.
+- **Audit tab** — last 50 events; integrity badge (`ShieldCheck`/`ShieldAlert`);
+  30s staleTime + "last updated N seconds ago" freshness label.
+- **Cost tab** — period selector (1h/24h/7d/30d/mtd); 5-card grid; staleTime=30s.
+- **Knowledge tab** — draft/candidate highlight; approved list; dual-query (drafts + approved).
+- **`packages/server/src/app.ts`** — `express.static(packages/web/dist)` when dist exists;
+  conditional so server still works without a prior web build.
+- **`build:web` / `dev:web`** scripts in root `package.json`.
+
+---
+
 ## [0.3.1] — 2026-04-29
 
 ### Context

@@ -10,7 +10,9 @@
   },
   "scripts": {
     "build": "pnpm -r build",
+    "build:web": "pnpm --filter @gijun-ai/web build",
     "dev": "pnpm --filter @gijun-ai/server dev",
+    "dev:web": "pnpm --filter @gijun-ai/web dev",
     "init": "node --import=tsx/esm packages/core/src/cli/init.mts",
     "audit:verify": "node --input-type=module -e \"import { runVerifyChainCli } from './packages/core/dist/index.js'; runVerifyChainCli(process.argv.slice(2))\" --",
     "audit:verify:json": "pnpm audit:verify -- --json --quiet",

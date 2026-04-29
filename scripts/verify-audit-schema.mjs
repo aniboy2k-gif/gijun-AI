@@ -138,6 +138,7 @@ if (errors.length > 0) {
   console.error(`✗ verify-audit-schema: ${errors.length} mismatch(es) between migrations and docs/audit-event-schema.md`)
   for (const e of errors) console.error(`  - ${e}`)
   console.error('\nLive schema (after applying all migrations):')
+  // biome-ignore lint/suspicious/noConsole: console.table is the clearest way to display schema diff
   console.table(live)
   console.error('Update docs/audit-event-schema.md §1 column table to match.')
   process.exit(1)

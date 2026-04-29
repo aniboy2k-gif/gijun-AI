@@ -164,8 +164,8 @@ test('runVerifyChainCli --emit-audit-on-fail: writes deprecation warning to stde
     return true
   }
 
-  const stderrOutput = stderrChunks.join('')
   process.stderr.write = origStderr
+  const _stderrOutput = stderrChunks.join('') // captured for future assertions
 
   try {
     const { runVerifyChainCli } = await import('../audit/verify-chain.js')
