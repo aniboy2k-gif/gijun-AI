@@ -10,7 +10,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.2%20alpha-yellow)
+![status](https://img.shields.io/badge/status-v0.3.1-blue)
 
 **Status: personal single-user tool — not a production dependency.** The HITL gate is a self-approval speed-bump for a solo developer, not multi-party governance. Fork the project if you need team mode, RBAC, or multi-user separation-of-duties.
 
@@ -237,6 +237,7 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 |--------|------|:----:|-------------|
 | GET | `/tasks` | ✓ | List tasks (filters: `project`, `status`, `limit`). |
 | POST | `/tasks` | ✓ | Create a task. Body: `{ title, complexity, description?, project?, tags? }`. |
+| POST | `/tasks/external` | ✓ | Upsert a task from an external system (idempotent by `externalSource`+`externalId`). Returns `{ id, created }`. |
 | GET | `/tasks/:id` | ✓ | Fetch a single task. |
 | PATCH | `/tasks/:id/status` | ✓ | Update status (`pending | in_progress | hitl_wait | done | cancelled`). |
 | POST | `/tasks/:id/steps` | ✓ | Append an AI step with prompt/response/cost/latency. |
@@ -255,9 +256,16 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
 | GET | `/knowledge` | ✓ | List items (filter by `layer`, `project`). |
+| GET | `/knowledge/drafts` | ✓ | List draft/candidate items pending HITL review. |
 | POST | `/knowledge` | ✓ | Create a knowledge item in a specific layer. |
 | POST | `/knowledge/search` | ✓ | FTS5 search. Body: `{ query, limit?, project? }`. |
-| POST | `/knowledge/:id/promote` | ✓ | Promote a candidate to the incident layer (atomic w/ audit). |
+| POST | `/knowledge/da-candidate` | ✓ | Pre-fill a draft knowledge item from DA output (`status=draft`). |
+| POST | `/knowledge/:id/promote` | ✓ | Legacy path: promote `layer=candidate` row to `layer=incident` (deprecated). |
+| POST | `/knowledge/:id/nominate` | ✓ | Nominate draft for HITL review (`draft→candidate`). |
+| POST | `/knowledge/:id/approve` | ✓ | Approve nominated candidate (`candidate→approved`). |
+| POST | `/knowledge/:id/revoke` | ✓ | Revoke an approved item (`approved→rejected`). Requires `reason`. |
+| POST | `/knowledge/:id/reject` | ✓ | Reject a draft or candidate (`draft|candidate→rejected`). |
+| POST | `/knowledge/:id/restore` | ✓ | Restore a rejected item as a new draft row (Option A: new row + `supersedes_id`). |
 
 ### `/playbooks`
 
@@ -319,15 +327,15 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 |--------|------|:----:|-------------|
 | POST | `/preflight` | ✓ | One-shot diagnostic combining policy + HITL evaluation without side effects. |
 
-**Total**: 34 endpoints (1 health + 33 authenticated).
+**Total**: 42 endpoints (1 health + 41 authenticated). Added in v0.3.0–v0.3.1: 7 knowledge HITL endpoints + 1 external task sync endpoint.
 
 ---
 
 ## MCP tools reference
 
-17 tools mapped 1:1 to the REST surface. Naming rule: `get_/list_/search_/tail_/verify_/check_` = READ, all others WRITE. All tools re-validate server-side inside atomic transactions — `preflight_check` and `check_budget` results are advisory.
+22 tools mapped 1:1 to the REST surface. Naming rule: `get_/list_/search_/tail_/verify_/check_` = READ, all others WRITE. All tools re-validate server-side inside atomic transactions — `preflight_check` and `check_budget` results are advisory.
 
-### READ (9)
+### READ (10)
 
 | Tool | Backing route | Purpose |
 |------|---------------|---------|
@@ -336,12 +344,13 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 | `tail_audit` | `GET /audit?n=N` | Last N audit events. |
 | `verify_audit_integrity` | `GET /audit/integrity-check` | Report broken hash links. |
 | `search_knowledge` | `POST /knowledge/search` | FTS5 search. |
+| `get_knowledge_drafts` | `GET /knowledge/drafts` | List draft/candidate items pending HITL review. |
 | `get_playbook` | `GET /playbooks/:id` or `…/slug/:slug` | One playbook by id or slug. |
 | `get_cost_summary` | `GET /traces/summary` | Aggregate cost + latency. |
 | `check_budget` | `POST /budget/check` | Advisory budget status (7 states). |
 | `preflight_check` | `POST /preflight` | Policy + HITL diagnostic. |
 
-### WRITE (8)
+### WRITE (12)
 
 | Tool | Backing route | Purpose |
 |------|---------------|---------|
@@ -351,10 +360,15 @@ All routes except `GET /health` require the `X-AgentGuard-Token` header. Base UR
 | `approve_hitl` | `POST /tasks/:id/hitl-approve` | Human approval. |
 | `append_audit` | `POST /audit` | Write an audit event. |
 | `create_knowledge` | `POST /knowledge` | Add a knowledge item. |
-| `promote_knowledge` | `POST /knowledge/:id/promote` | Candidate → incident. |
+| `promote_knowledge` | `POST /knowledge/:id/promote` | Legacy candidate → incident (deprecated; use HITL workflow). |
+| `create_da_candidate` | `POST /knowledge/da-candidate` | Pre-fill draft from DA output (`status=draft`). |
+| `nominate_knowledge_candidate` | `POST /knowledge/:id/nominate` | `draft→candidate` (submit for HITL review). |
+| `approve_knowledge_candidate` | `POST /knowledge/:id/approve` | `candidate→approved` (HITL approval). |
+| `revoke_knowledge_approval` | `POST /knowledge/:id/revoke` | `approved→rejected` (revoke approval). |
+| `reject_knowledge_candidate` | `POST /knowledge/:id/reject` | `draft|candidate→rejected`. |
 | `report_incident` | `POST /incidents` | File an incident. |
 
-Excluded from v0.1 (available via REST only): playbook CRUD beyond GET, incident pattern promotion, raw policy CRUD, `POST /traces`, `POST /verifications`. Rationale: these are curation surfaces, not routine agent actions.
+Excluded from MCP (available via REST only): `POST /tasks/external` (outbox inbound), `POST /knowledge/:id/restore`, playbook CRUD beyond GET, incident pattern promotion, raw policy CRUD, `POST /traces`, `POST /verifications`. Rationale: these are curation or external-integration surfaces, not routine agent actions.
 
 ---
 
@@ -367,7 +381,7 @@ Excluded from v0.1 (available via REST only): playbook CRUD beyond GET, incident
 - **Redaction-independent integrity** — `original_hash` is frozen at insert; chain verification uses it. `payload` can be blanked for compliance without breaking the chain.
 - **Append-only** — no DELETE or UPDATE on `audit_events` anywhere in the codebase.
 - **Single connection + WAL** — node:sqlite with `journal_mode=WAL`; the `beginAudit*` / `commit` helpers use atomic transactions for promote/HITL-approve flows.
-- **Schema chain preflight** — the server refuses to start if `schema_migrations` does not list every migration in the expected order (`001_initial → 002_original_hash → 003_original_hash_type → 004_cost_budget → 005_policy_eval_index`).
+- **Schema chain preflight** — the server refuses to start if `schema_migrations` does not list every migration in the expected order (`001_initial → … → 005_policy_eval_index → 006_cost_parse_status → 007_knowledge_status → 008_external_sync`).
 
 ---
 
@@ -474,9 +488,9 @@ v0.2 is an alpha for **solo developers running a single local instance**. Things
 - **Advisory-only budget** — `checkBudget()` never halts execution. If you need a hard cap, your caller must read the status and stop.
 - **No distributed audit** — hash chain is a single file, not replicated.
 - **No auth provider integration** — one `AGENTGUARD_TOKEN` per server, rotated by hand.
-- **Partial MCP coverage** — 17 tools cover the common-path agent actions; raw policy management, playbook CRUD, incident pattern promotion, and `POST /traces` / `POST /verifications` are REST-only in v0.1.
+- **Partial MCP coverage** — 22 tools cover the common-path agent actions; `POST /tasks/external`, `POST /knowledge/:id/restore`, playbook CRUD beyond GET, incident pattern promotion, raw policy CRUD, `POST /traces`, and `POST /verifications` are REST-only.
 - **Windows untested** — all dev on macOS Darwin 25.x; Linux expected to work.
-- **No UI** — everything is REST + MCP. A `packages/web` slot exists but is empty.
+- **No UI** — everything is REST + MCP. A `packages/web` slot exists but is empty (P4 dashboard is the next roadmap item).
 
 These are honest scope calls, not oversights. They will move out of this list one by one.
 
@@ -503,6 +517,24 @@ DA-chain–driven hardening across two patches (v0.1.4 + v0.2.0). No product beh
 - **Audit-tampering tests** — 3 detection cases (prev_hash mutation, middle-row deletion, chain_hash mutation) verified by `verifyChain()` (v0.2.0)
 - **Deferred RFC memo** — `docs/v0.2-deferred-rfc-evaluation.md` records cost/benefit/trigger for H6/M3/M5 (self-check automation review, RFC template, gate matrix doc) so reopening the work has a receipt (v0.2.0)
 
+### v0.3.1 (released 2026-04-29)
+
+bulletin-board → gijun-AI one-way outbox integration (P3). CSR lifecycle events from bulletin-board flow into gijun-AI via an idempotent `POST /tasks/external` endpoint. Migration 008 adds `external_id`/`external_source` tracking fields.
+
+- **`migrations/008_external_sync.sql`** — `external_id`, `external_source` columns + partial unique index on `tasks`.
+- **`POST /tasks/external`** — idempotent upsert endpoint; returns `{ id, created }`.
+- **`upsertExternalTask()`** — core service function with `task.external_sync` audit event.
+- **bulletin-board outbox** — `outbox_events` table + polling worker (`--once`/`--dry-run` flags); silent-fail hooks in `csr-log.js` on `create-post`/`done`/`error`.
+- Test count: 133 (was 126).
+
+### v0.3.0 (released 2026-04-29)
+
+DA-chain–agreed feature set (P0 + P1 + P2). Adds incremental audit verification, multi-provider cost parsing, and a full HITL-gated knowledge lifecycle. MCP tools: 22 (was 17). Test count: 126 (was 78).
+
+- **P0 — Audit verify CLI** (`packages/core`): `verifyChain()` extended with `VerifyOptions { fromId?, limit? }`; `VerifyResultItem` discriminated union; CLI flags `--from`, `--limit`, `--json`, `--quiet`; `chain_gap` detection; deprecated `--emit-audit-on-fail` kept as no-op.
+- **P1 — Multi-provider cost parsing** (`packages/core`): `CostEntry` type; Strategy Pattern (`ICostParser`/`IPricingStrategy`); `ClaudeParser` + `OpenAIParser`; `ANTHROPIC_PRICING`/`OPENAI_PRICING` tables; `cost_usd_micros INTEGER` canonical column; `parseAuto()` shape-based dispatch; migration 006 (append-only, no backfill UPDATE).
+- **P2 — Knowledge HITL lifecycle** (`packages/core`, `packages/server`, `packages/mcp-server`): `status TEXT ('draft'|'candidate'|'approved'|'rejected')`; `createDaCandidate()`, `nominateKnowledgeCandidate()`, `approveKnowledgeCandidate()`, `revokeKnowledgeApproval()` (C1 closure), `rejectKnowledgeCandidate()`, `restoreFromRejected()` (Option A: new row + `supersedes_id`); BEGIN IMMEDIATE + compare-and-swap; audit snapshot in payload; migration 007; 7 new REST endpoints; 5 new MCP tools.
+
 ### v0.3+ (deferred / event-triggered)
 
 The following items have explicit reopening triggers — they will move forward when the trigger fires, not on a date.
@@ -513,7 +545,7 @@ The following items have explicit reopening triggers — they will move forward 
 - **SBOM and provenance for release artifacts** — required before npm publish; release.yml has stub stages for it. Tracking: #8.
 - **Publish-approval gate** (release.yml stages 5–6, currently stubbed).
 - **End-to-end tests proving abusive requests are actually blocked** (ASI04, currently `[pending E2E]`). Tracking: #7.
-- **`packages/web`** read-only dashboard (Vite + shadcn/ui) — slot exists but empty.
+- **`packages/web`** read-only dashboard (Vite + React + shadcn/ui) — **in progress (P4)**. 4-tab layout: Tasks · Audit · Cost · Knowledge. Served by the existing Express server at `GET /`.
 - **Playbook CRUD in MCP** / **Incident pattern promotion via MCP** / **`POST /policies/:id` PATCH for edit-in-place**.
 - **JSONL export of audit log** for external retention.
 - **Plugin API** for custom HITL axes.
