@@ -42,7 +42,7 @@ test('tampering case 1: mutating prev_hash on a middle row breaks the chain', ()
   assert.ok(result.broken.length >= 1, 'broken list must contain at least one entry')
   // The tampered row appears in broken (its prev_hash no longer matches the chain expectation).
   assert.ok(
-    result.broken.some(b => b.id === id2),
+    result.broken.some(b => b.kind !== 'chain_gap' && b.id === id2),
     `broken list must include the tampered row id=${id2}`,
   )
 })
@@ -84,10 +84,11 @@ test('tampering case 3: mutating chain_hash on the last row breaks the chain', (
   const result = verifyChain()
   assert.equal(result.valid, false, 'verifyChain must detect chain_hash tampering')
   assert.ok(
-    result.broken.some(b => b.id === id2),
+    result.broken.some(b => b.kind !== 'chain_gap' && b.id === id2),
     `broken list must include the tampered row id=${id2}`,
   )
   // The forged value must appear as the "actual" in the broken entry.
-  const entry = result.broken.find(b => b.id === id2)
-  assert.equal(entry?.actual, forged, 'broken entry must record the forged value')
+  const entry = result.broken.find(b => b.kind !== 'chain_gap' && b.id === id2)
+  assert.ok(entry != null && entry.kind !== 'chain_gap', 'entry must exist and be a recompute or linkage item')
+  assert.equal(entry.actual, forged, 'broken entry must record the forged value')
 })

@@ -4,6 +4,42 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.2.1] — 2026-04-29
+
+### Context
+
+P0 of the DA-chain-agreed feature set (Tier 1, session /tmp/da-chain-1777450152).
+Enhances the existing `audit:verify` CLI with incremental verification, JSON output,
+quiet mode, and a typed `VerifyResultItem` discriminated union. No DB migrations.
+Test count: 87 (was 78).
+
+### Added
+
+- **`VerifyOptions`** — `{ fromId?, limit? }` options type for `verifyChain()`. Enables
+  incremental chain verification starting from a specific row id, and limiting the
+  verification window to the most recent N rows.
+- **`VerifyResultItem`** — discriminated union `linkage | recompute | chain_gap` replaces
+  the previous flat `{ id, expected, actual }` broken-item type. `chain_gap` surfaces when
+  `fromId > 1` but no preceding row exists in the DB.
+- **`audit:verify:json`** pnpm script — shorthand for `--json --quiet` (cron/CI use).
+- **`audit:verify:tail`** pnpm script — shorthand for `--limit 100`.
+- **CLI flags**: `--from <id>`, `--limit <n>`, `--json`, `--quiet`, plus `--emit-audit-on-fail`
+  as a deprecated no-op (removed in v0.3) with a stderr deprecation warning.
+- **`audit-verify-cli.test.ts`** — 9 new tests covering incremental verification, limit,
+  chain_gap detection, JSON output, and deprecated flag handling.
+
+### Changed
+
+- `verifyChain()` now accepts an optional `VerifyOptions` argument (fully backward-compatible:
+  calling with no args still performs full-chain verification).
+- `runVerifyChainCli()` now accepts an optional `argv` parameter (defaults to
+  `process.argv.slice(2)`) — makes the function testable without spawning a subprocess.
+- `audit:verify` pnpm script updated to pass `process.argv.slice(2)` to `runVerifyChainCli`
+  and to use a direct relative path (`./packages/core/dist/index.js`) instead of the
+  workspace package specifier (avoids pnpm hoisting issues).
+- `audit-tampering.test.ts` updated to use the new `VerifyResultItem` discriminated union
+  when asserting on broken-item contents.
+
 ## [0.2.0] — 2026-04-26
 
 ### Context
