@@ -42,7 +42,7 @@ export function createApp(): Express {
 
   // Serve P4 web dashboard at root if dist exists
   const here = dirname(fileURLToPath(import.meta.url))
-  const webDist = resolve(here, '../../../web/dist')
+  const webDist = resolve(here, '../../web/dist')
   if (existsSync(webDist)) {
     app.use(express.static(webDist))
   }
