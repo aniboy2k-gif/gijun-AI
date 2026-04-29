@@ -95,7 +95,7 @@ test('upsertExternalTask: updates status when called with new status', () => {
     title: '[CSR #301] 상태 변경 테스트',
     status: 'done',
   })
-  assert.equal(getTask(id)!.status, 'done')
+  assert.equal(getTask(id)?.status, 'done')
 })
 
 test('upsertExternalTask: pending→cancelled transition works', () => {
@@ -110,7 +110,7 @@ test('upsertExternalTask: pending→cancelled transition works', () => {
     title: '[CSR #302] 취소 테스트',
     status: 'cancelled',
   })
-  assert.equal(getTask(id)!.status, 'cancelled')
+  assert.equal(getTask(id)?.status, 'cancelled')
 })
 
 // ---------------------------------------------------------------------------

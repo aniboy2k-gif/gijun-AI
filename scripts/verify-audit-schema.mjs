@@ -135,10 +135,14 @@ const doc = readDocColumns()
 const errors = diff(live, doc)
 
 if (errors.length > 0) {
+  // biome-ignore lint/suspicious/noConsole: CLI diagnostic output — console.error is intentional
   console.error(`✗ verify-audit-schema: ${errors.length} mismatch(es) between migrations and docs/audit-event-schema.md`)
+  // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   for (const e of errors) console.error(`  - ${e}`)
+  // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   console.error('\nLive schema (after applying all migrations):')
   console.table(live)
+  // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   console.error('Update docs/audit-event-schema.md §1 column table to match.')
   process.exit(1)
 }

@@ -7,7 +7,8 @@ import { existsSync } from 'node:fs'
 const HERE: string = (() => {
   try {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - __dirname exists at runtime in CJS / tsx
+    // biome-ignore lint/suspicious/noTsIgnore: __dirname may not exist in ESM context — runtime check required
+    // @ts-ignore
     return typeof __dirname !== 'undefined' ? (__dirname as string) : process.cwd()
   } catch {
     return process.cwd()
@@ -25,6 +26,7 @@ function resolvePackageRoot(): string {
       return candidate
     }
   }
+  // biome-ignore lint/style/noNonNullAssertion: candidates array always has at least one element
   return candidates[0]!
 }
 
@@ -39,6 +41,7 @@ function resolveMigrationsDir(): string {
   for (const candidate of candidates) {
     if (existsSync(candidate)) return candidate
   }
+  // biome-ignore lint/style/noNonNullAssertion: candidates array always has at least one element
   return candidates[0]!
 }
 
