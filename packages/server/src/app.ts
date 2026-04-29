@@ -1,5 +1,5 @@
 import express, { type Express } from 'express'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tasksRouter } from './routes/tasks.js'
@@ -39,6 +39,13 @@ const VERSION = readRepoVersion()
 export function createApp(): Express {
   const app = express()
   app.use(express.json())
+
+  // Serve P4 web dashboard at root if dist exists
+  const here = dirname(fileURLToPath(import.meta.url))
+  const webDist = resolve(here, '../../../web/dist')
+  if (existsSync(webDist)) {
+    app.use(express.static(webDist))
+  }
 
   app.get('/health', (_req, res) => res.json({ ok: true, version: VERSION }))
 
