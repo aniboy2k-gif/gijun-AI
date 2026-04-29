@@ -253,6 +253,10 @@ export const TOOLS: ToolDef[] = [
     'WRITES: Revoke an approved knowledge item (approved → rejected). Requires reason. Item becomes inactive.',
     RevokeKnowledgeApprovalSchema,
     (a, c) => c.post(`/knowledge/${a.id}/revoke`, { reason: a.reason })),
+  def('reject_knowledge_candidate',
+    'WRITES: Reject a draft or candidate knowledge item (draft|candidate → rejected).',
+    RejectKnowledgeCandidateSchema,
+    (a, c) => c.post(`/knowledge/${a.id}/reject`, { reason: a.reason })),
 ]
 
 export function findTool(name: string): ToolDef | undefined {

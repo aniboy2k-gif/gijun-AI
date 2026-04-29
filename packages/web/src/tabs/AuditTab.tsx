@@ -38,7 +38,7 @@ export function AuditTab() {
           )}
           <span className={`text-xs ${isStale ? 'text-orange-500' : 'text-muted-foreground'}`}>{label}</span>
         </div>
-        <button onClick={() => void refetch()} disabled={isFetching}
+        <button type="button" onClick={() => void refetch()} disabled={isFetching}
           className="p-1.5 rounded hover:bg-accent disabled:opacity-40">
           <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
         </button>

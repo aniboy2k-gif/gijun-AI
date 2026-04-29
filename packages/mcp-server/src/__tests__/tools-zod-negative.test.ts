@@ -115,6 +115,11 @@ const INVALID: Record<string, InvalidCase[]> = {
     { name: 'missing reason', input: { id: 1 }, reason: 'reason required' },
     { name: 'empty reason', input: { id: 1, reason: '' }, reason: 'reason min(1)' },
   ],
+  reject_knowledge_candidate: [
+    { name: 'missing fields', input: {}, reason: 'id+reason required' },
+    { name: 'missing reason', input: { id: 1 }, reason: 'reason required' },
+    { name: 'empty reason', input: { id: 1, reason: '' }, reason: 'reason min(1)' },
+  ],
 }
 
 function isZodError(err: unknown): err is z.ZodError {
@@ -124,6 +129,7 @@ function isZodError(err: unknown): err is z.ZodError {
 test('zod-negative: INVALID dictionary covers every registered tool', () => {
   for (const tool of TOOLS) {
     assert.ok(
+      // biome-ignore lint/suspicious/noPrototypeBuiltins: safe call pattern
       Object.prototype.hasOwnProperty.call(INVALID, tool.name),
       `${tool.name} missing INVALID entry`,
     )
