@@ -15,8 +15,12 @@ export {
 } from './task/service.js'
 
 export {
-  searchKnowledge, createKnowledgeItem, promoteCandidate, listKnowledge
+  searchKnowledge, createKnowledgeItem, promoteCandidate, listKnowledge,
+  listKnowledgeDrafts, createDaCandidate, nominateKnowledgeCandidate,
+  approveKnowledgeCandidate, revokeKnowledgeApproval, rejectKnowledgeCandidate,
+  restoreFromRejected,
 } from './knowledge/retriever.js'
+export type { DaCandidateInput } from './knowledge/retriever.js'
 
 export {
   evaluateStepHitl,

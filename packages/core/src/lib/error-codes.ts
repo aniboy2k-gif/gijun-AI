@@ -4,6 +4,7 @@ export const ErrorCode = {
   HITL_REQUIRED: 'HITL_REQUIRED',
   POLICY_OVERFLOW: 'POLICY_OVERFLOW',
   VALIDATION: 'VALIDATION',
+  INVALID_STATE: 'INVALID_STATE',
 } as const
 
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode]

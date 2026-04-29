@@ -92,6 +92,29 @@ const INVALID: Record<string, InvalidCase[]> = {
     { name: 'empty title', input: { title: '', description: 'd' }, reason: 'title min(1)' },
     { name: 'invalid severity', input: { title: 't', description: 'd', severity: 'apocalyptic' }, reason: 'severity enum' },
   ],
+  // Knowledge lifecycle tools (migration 007+)
+  get_knowledge_drafts: [
+    { name: 'invalid layer', input: { layer: 'invalid' }, reason: 'layer enum' },
+    { name: 'limit zero', input: { limit: 0 }, reason: 'limit min(1)' },
+  ],
+  create_da_candidate: [
+    { name: 'missing fields', input: {}, reason: 'title+content+reasoning+targetLayer required' },
+    { name: 'empty title', input: { title: '', content: 'c', reasoning: 'r', targetLayer: 'incident' }, reason: 'title min(1)' },
+    { name: 'invalid targetLayer', input: { title: 't', content: 'c', reasoning: 'r', targetLayer: 'candidate' }, reason: 'targetLayer enum' },
+  ],
+  nominate_knowledge_candidate: [
+    { name: 'missing id', input: {}, reason: 'id required' },
+    { name: 'id string', input: { id: 'abc' }, reason: 'id must be int' },
+  ],
+  approve_knowledge_candidate: [
+    { name: 'missing id', input: {}, reason: 'id required' },
+    { name: 'id float', input: { id: 1.5 }, reason: 'id must be int' },
+  ],
+  revoke_knowledge_approval: [
+    { name: 'missing fields', input: {}, reason: 'id+reason required' },
+    { name: 'missing reason', input: { id: 1 }, reason: 'reason required' },
+    { name: 'empty reason', input: { id: 1, reason: '' }, reason: 'reason min(1)' },
+  ],
 }
 
 function isZodError(err: unknown): err is z.ZodError {
@@ -169,6 +192,7 @@ test('zod-negative: tools with required fields throw on empty object {}', () => 
     'tail_audit',
     'get_cost_summary',
     'check_budget',
+    'get_knowledge_drafts',  // layer and limit are optional
   ])
   for (const tool of TOOLS) {
     if (allOptional.has(tool.name)) continue

@@ -4,6 +4,58 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.3.0] — 2026-04-29
+
+### Context
+
+P2 of the DA-chain-agreed feature set (Tier 1, session /tmp/da-chain-1777450152).
+Adds knowledge lifecycle management: DA results can now be pre-filled as draft
+knowledge items and promoted through a HITL-gated workflow (draft→candidate→approved).
+Revocation and rejection with audit trail are included. All state transitions are
+atomic (BEGIN IMMEDIATE + compare-and-swap). MCP tools: 22 (was 17).
+Test count: 126 (was 100).
+
+### Added
+
+- **`migrations/007_knowledge_status.sql`** — adds to `knowledge_items`:
+  `status` TEXT ('draft','candidate','approved','rejected'), `status_reason` TEXT,
+  `supersedes_id` INTEGER FK. Backfills existing rows to `status='approved'`;
+  legacy `layer='candidate'` rows → `status='candidate', layer='incident'`.
+  FTS UPDATE trigger replaced with NULL-safe WHEN condition (prevents unnecessary
+  re-indexing on status-only transitions).
+- **`createDaCandidate(input)`** — pre-fills a knowledge item from DA output with
+  `status='draft'`, `layer=targetLayer`. Includes `reasoning` field for bias prevention.
+- **`nominateKnowledgeCandidate(id)`** — `draft → candidate` + audit event.
+- **`approveKnowledgeCandidate(id, opts?)`** — `candidate → approved` + audit event.
+- **`revokeKnowledgeApproval(id, reason)`** — `approved → rejected` + audit event
+  (DA CRITICAL C1: approved state is no longer terminal).
+- **`rejectKnowledgeCandidate(id, reason)`** — `draft|candidate → rejected` + audit event.
+- **`restoreFromRejected(id, opts?)`** — Option A recovery: creates a new `status='draft'`
+  row with `supersedes_id` pointing to the rejected original. Rejected row stays immutable.
+- **`listKnowledgeDrafts(opts?)`** — lists items in `draft` or `candidate` status.
+- All transition functions use `WHERE id=? AND status=?` compare-and-swap to prevent
+  lost updates; each audit event includes a `knowledge_item_snapshot` for forensic reproducibility.
+- **5 new REST endpoints** on `GET /knowledge/drafts`, `POST /knowledge/da-candidate`,
+  `POST /knowledge/:id/nominate`, `POST /knowledge/:id/approve`, `POST /knowledge/:id/revoke`,
+  `POST /knowledge/:id/reject`, `POST /knowledge/:id/restore`.
+- **5 new MCP tools**: `get_knowledge_drafts` (READ), `create_da_candidate`,
+  `nominate_knowledge_candidate`, `approve_knowledge_candidate`, `revoke_knowledge_approval` (WRITE).
+  Total tools: 22 (READ 10, WRITE 12).
+- **`__tests__/knowledge-status.test.ts`** — 22 new tests (state transitions, audit events,
+  compare-and-swap, is_active sync, promoteCandidate backward-compat).
+
+### Changed
+
+- `ErrorCode` — added `INVALID_STATE` for state transition failures.
+- `promoteCandidate()` — now additionally sets `status='approved'` when promoting
+  legacy `layer='candidate'` rows; marked `@deprecated` (use `approveKnowledgeCandidate`).
+- `searchKnowledge()` — filters by `status='approved'` (or NULL for pre-007 rows).
+- `listKnowledge()` — same status filter as `searchKnowledge`.
+- `packages/server/src/server.ts` — `assertSchemaChain` includes `007_knowledge_status`.
+- `packages/mcp-server/src/__tests__/tools-registry.test.ts` — updated from 17→22 tools,
+  9/8 READ/WRITE split → 10/12.
+- `packages/mcp-server/src/__tests__/tools-zod-negative.test.ts` — 5 new tool fixtures added.
+
 ## [0.3.0-pre] — 2026-04-29
 
 ### Context
