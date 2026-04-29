@@ -29,7 +29,7 @@ export function CostTab() {
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
           {PERIODS.map(p => (
-            <button key={p.value} onClick={() => setPeriod(p.value)}
+            <button type="button" key={p.value} onClick={() => setPeriod(p.value)}
               className={`px-3 py-1 text-xs rounded-full transition-colors ${
                 period === p.value ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
               }`}>
@@ -37,7 +37,7 @@ export function CostTab() {
             </button>
           ))}
         </div>
-        <button onClick={() => void refetch()} disabled={isFetching}
+        <button type="button" onClick={() => void refetch()} disabled={isFetching}
           className="p-1.5 rounded hover:bg-accent disabled:opacity-40">
           <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
         </button>
@@ -77,7 +77,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="py-8 text-center space-y-3">
       <p className="text-sm text-muted-foreground">데이터를 불러오지 못했습니다.</p>
-      <button onClick={onRetry} className="px-4 py-1.5 text-sm border border-border rounded hover:bg-accent">재시도</button>
+      <button type="button" onClick={onRetry} className="px-4 py-1.5 text-sm border border-border rounded hover:bg-accent">재시도</button>
     </div>
   )
 }
