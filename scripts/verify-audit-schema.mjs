@@ -141,6 +141,7 @@ if (errors.length > 0) {
   for (const e of errors) console.error(`  - ${e}`)
   // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   console.error('\nLive schema (after applying all migrations):')
+  // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   console.table(live)
   // biome-ignore lint/suspicious/noConsole: CLI diagnostic output
   console.error('Update docs/audit-event-schema.md §1 column table to match.')

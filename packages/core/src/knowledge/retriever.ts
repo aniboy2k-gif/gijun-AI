@@ -33,6 +33,7 @@ type KnowledgeRow = {
   supersedes_id: number | null
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: reserved for future priority-based sorting
 const LAYER_PRIORITY: Record<string, number> = {
   incident: 3,
   project: 2,
@@ -163,7 +164,6 @@ export type DaCandidateInput = {
 /** Create a draft knowledge item pre-filled from DA output. status='draft'. */
 export function createDaCandidate(input: DaCandidateInput): number {
   const db = getDb()
-  const now = new Date().toISOString()
   const tags = JSON.stringify(input.tags ?? [])
   const reason = [
     input.reasoning,
@@ -285,7 +285,6 @@ export function rejectKnowledgeCandidate(id: number, reason: string): void {
  */
 export function restoreFromRejected(id: number, opts?: { reason?: string }): number {
   const db = getDb()
-  const now = new Date().toISOString()
 
   const original = db.prepare('SELECT * FROM knowledge_items WHERE id = ? AND status = ?')
     .get(id, 'rejected') as KnowledgeRow | undefined
