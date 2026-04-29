@@ -87,7 +87,7 @@ test('upsertExternalTask: updates status when called with new status', () => {
     externalId: 'csr-301',
     title: '[CSR #301] 상태 변경 테스트',
   })
-  assert.equal(getTask(id)!.status, 'pending')
+  assert.equal(getTask(id)?.status, 'pending')
 
   upsertExternalTask({
     externalSource: 'bulletin-board-csr',

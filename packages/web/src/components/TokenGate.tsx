@@ -64,6 +64,8 @@ export function TokenGate({ children }: TokenGateProps) {
               onChange={e => setInput(e.target.value)}
               placeholder="토큰 입력"
               className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              // biome-ignore lint/a11y/noAutofocus: intentional — token input is the only action
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
             />
             {error && <p className="text-xs text-destructive">{error}</p>}

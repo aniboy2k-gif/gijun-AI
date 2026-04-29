@@ -26,7 +26,7 @@ function Dashboard() {
           <span className="font-semibold text-sm tracking-tight">gijun-ai</span>
           <nav className="flex gap-1">
             {TABS.map(t => (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button key={t.id} type="button" onClick={() => setTab(t.id)}
                 className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                   tab === t.id
                     ? 'bg-primary text-primary-foreground'
