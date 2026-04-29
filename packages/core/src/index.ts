@@ -5,6 +5,9 @@ export type { AuditEventInput } from './audit/service.js'
 export { verifyChain, runVerifyChainCli } from './audit/verify-chain.js'
 export type { VerifyOptions, VerifyResult, VerifyResultItem } from './audit/verify-chain.js'
 
+export { CostEntrySchema, microsToUsd, usdToMicros, CONSERVATIVE_ESTIMATE_MICROS_PER_CALL, computeCostMicros, parseAuto, registerParser, getParser, ClaudeParser, OpenAIParser, AnthropicPricingStrategy, OpenAIPricingStrategy } from './cost/index.js'
+export type { CostEntry, ParseStatus, CostSource, ICostParser, IPricingStrategy, TokenPricing } from './cost/index.js'
+
 export { createPlaybook, updatePlaybook, listPlaybooks, getPlaybook } from './playbook/service.js'
 
 export {
@@ -39,5 +42,5 @@ export { reportIncident, listCandidatePatterns, approvePatternPromotion, listInc
 export { createPolicy, evaluate as evaluatePolicy, setPolicyActive, CostLimitConditionsSchema } from './policy/engine.js'
 export { listPolicies } from './policy/query.js'
 
-export { recordTrace, generateTraceId, getCostSummary, checkBudget } from './tracer/service.js'
-export type { BudgetStatus, BudgetPeriod, BudgetScope } from './tracer/service.js'
+export { recordTrace, recordTraceFromCostEntry, generateTraceId, getCostSummary, checkBudget } from './tracer/service.js'
+export type { BudgetStatus, BudgetPeriod, BudgetScope, TraceInput } from './tracer/service.js'
