@@ -11,8 +11,10 @@ export type { CostEntry, ParseStatus, CostSource, ICostParser, IPricingStrategy,
 export { createPlaybook, updatePlaybook, listPlaybooks, getPlaybook } from './playbook/service.js'
 
 export {
-  createTask, updateTaskStatus, approveHitl, addTaskStep, listTasks, getTask
+  createTask, updateTaskStatus, approveHitl, addTaskStep, listTasks, getTask,
+  upsertExternalTask, ExternalTaskSchema,
 } from './task/service.js'
+export type { ExternalTaskInput } from './task/service.js'
 
 export {
   searchKnowledge, createKnowledgeItem, promoteCandidate, listKnowledge,

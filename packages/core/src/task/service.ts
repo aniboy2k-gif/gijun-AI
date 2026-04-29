@@ -181,3 +181,71 @@ export function listTasks(opts: { project?: string; status?: string; limit?: num
 export function getTask(id: number): TaskRow | undefined {
   return getDb().prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow | undefined
 }
+
+export const ExternalTaskSchema = z.object({
+  externalSource: z.string().min(1).max(128),
+  externalId: z.string().min(1).max(256),
+  title: z.string().min(1).max(512),
+  description: z.string().max(4096).optional(),
+  status: z.enum(['pending', 'in_progress', 'done', 'cancelled']).optional(),
+})
+
+export type ExternalTaskInput = z.input<typeof ExternalTaskSchema>
+
+/**
+ * Upsert a task from an external system (e.g., bulletin-board CSR outbox).
+ * Idempotent: same (externalSource, externalId) pair always maps to the same task row.
+ * Returns { id, created: true } on first insert, { id, created: false } on subsequent calls.
+ */
+export function upsertExternalTask(input: ExternalTaskInput): { id: number; created: boolean } {
+  const validated = ExternalTaskSchema.parse(input)
+  const db = getDb()
+
+  const existing = db.prepare(
+    'SELECT id FROM tasks WHERE external_source = ? AND external_id = ?'
+  ).get(validated.externalSource, validated.externalId) as { id: number } | undefined
+
+  if (existing) {
+    const newStatus = validated.status
+    if (newStatus !== undefined) {
+      withTxAndAudit<void>(txDb => {
+        txDb.prepare(
+          "UPDATE tasks SET status = ?, updated_at = datetime('now') WHERE id = ?"
+        ).run(newStatus, existing.id)
+        const audit: AuditEventInput = {
+          eventType: 'task.external_sync',
+          action: `external sync: ${validated.externalSource}/${validated.externalId} → status=${newStatus}`,
+          resourceType: 'task',
+          resourceId: String(existing.id),
+          payload: { externalSource: validated.externalSource, externalId: validated.externalId, status: newStatus },
+        }
+        return { result: undefined, audit }
+      })
+    }
+    return { id: existing.id, created: false }
+  }
+
+  const id = withTxAndAudit<number>(txDb => {
+    const result = txDb.prepare(`
+      INSERT INTO tasks
+        (title, description, complexity, external_source, external_id, status)
+      VALUES (?, ?, 'standard', ?, ?, 'pending')
+    `).run(
+      validated.title,
+      validated.description ?? null,
+      validated.externalSource,
+      validated.externalId,
+    )
+    const newId = result.lastInsertRowid as number
+    const audit: AuditEventInput = {
+      eventType: 'task.external_sync',
+      action: `external task created: ${validated.externalSource}/${validated.externalId}`,
+      resourceType: 'task',
+      resourceId: String(newId),
+      payload: { externalSource: validated.externalSource, externalId: validated.externalId, created: true },
+    }
+    return { result: newId, audit }
+  })
+
+  return { id, created: true }
+}
