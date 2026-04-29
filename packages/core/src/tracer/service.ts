@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto'
 import { getDb } from '../db/client.js'
 import { appendAuditEvent } from '../audit/service.js'
 import { CostLimitConditionsSchema } from '../policy/engine.js'
+import type { CostEntry } from '../cost/types.js'
+import { CONSERVATIVE_ESTIMATE_MICROS_PER_CALL } from '../cost/pricing.js'
 
 export const TraceSchema = z.object({
   taskId: z.number().int().optional(),
@@ -54,6 +56,56 @@ export function generateTraceId(): string {
   return randomBytes(16).toString('hex')
 }
 
+/**
+ * Records a trace from a parsed CostEntry (migration 006+ schema).
+ * Uses cost_usd_micros as the canonical cost field; backfills cost_usd for
+ * backward-compat with pre-006 callers that read cost_usd directly.
+ *
+ * @returns the SQLite lastInsertRowid of the new traces row.
+ */
+export function recordTraceFromCostEntry(
+  traceId: string,
+  entry: CostEntry,
+  extra?: {
+    taskId?: number
+    operation?: string
+    latencyMs?: number
+    spanData?: Record<string, unknown>
+  },
+): number {
+  const db = getDb()
+
+  // Derive the legacy cost_usd from micros for backward-compat readers.
+  // NULL micros (should not happen in practice) → 0 legacy cost.
+  const legacyCostUsd = entry.costUsdMicros != null ? entry.costUsdMicros / 1_000_000 : 0
+
+  const result = db.prepare(`
+    INSERT INTO traces (
+      trace_id, task_id, operation, model, provider,
+      input_tokens, output_tokens, cost_usd, latency_ms,
+      span_data,
+      parse_status, parse_error, raw_payload_hash, cost_usd_micros, cost_source
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    traceId,
+    extra?.taskId ?? null,
+    extra?.operation ?? null,
+    entry.model,
+    entry.provider,
+    entry.inputTokens,
+    entry.outputTokens,
+    legacyCostUsd,
+    extra?.latencyMs ?? 0,
+    JSON.stringify(extra?.spanData ?? {}),
+    entry.parseStatus,
+    entry.parseError ?? null,
+    entry.rawPayloadHash ?? null,
+    entry.costUsdMicros,
+    entry.costSource,
+  )
+  return result.lastInsertRowid as number
+}
+
 type CostSummary = {
   total_cost_usd: number
   total_input_tokens: number
@@ -81,9 +133,16 @@ function resolveSinceSql(period: BudgetPeriod): string {
 
 export function getCostSummary(period: BudgetPeriod = '24h'): CostSummary {
   const sinceSql = resolveSinceSql(period)
+  // cost_usd_micros is canonical (migration 006+). For legacy rows (cost_usd_micros IS NULL),
+  // fall back to cost_usd * 1,000,000 to maintain continuity. Result is converted back to USD.
   return getDb().prepare(`
     SELECT
-      COALESCE(SUM(cost_usd), 0)       AS total_cost_usd,
+      COALESCE(
+        SUM(CASE
+          WHEN cost_usd_micros IS NOT NULL THEN cost_usd_micros / 1000000.0
+          ELSE cost_usd
+        END), 0
+      )                                 AS total_cost_usd,
       COALESCE(SUM(input_tokens), 0)   AS total_input_tokens,
       COALESCE(SUM(output_tokens), 0)  AS total_output_tokens,
       COUNT(*)                          AS total_calls,
@@ -91,6 +150,30 @@ export function getCostSummary(period: BudgetPeriod = '24h'): CostSummary {
     FROM traces
     WHERE created_at >= ${sinceSql}
   `).get() as CostSummary
+}
+
+/**
+ * Returns cost breakdown by parse_status for the given period.
+ * Used internally by checkBudget to apply conservative estimation for 'failed' traces.
+ */
+type CostBreakdown = {
+  confirmed_micros: number
+  failed_count: number
+  total_calls: number
+}
+
+function getCostBreakdown(period: BudgetPeriod): CostBreakdown {
+  const sinceSql = resolveSinceSql(period)
+  return getDb().prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN parse_status IN ('success', 'legacy')
+        THEN COALESCE(cost_usd_micros, CAST(cost_usd * 1000000 AS INTEGER))
+        ELSE 0 END), 0)                AS confirmed_micros,
+      COUNT(CASE WHEN parse_status = 'failed' THEN 1 END) AS failed_count,
+      COUNT(*)                         AS total_calls
+    FROM traces
+    WHERE created_at >= ${sinceSql}
+  `).get() as CostBreakdown
 }
 
 // ===========================================================
@@ -161,13 +244,17 @@ export function checkBudget(opts: { toolName?: string; resource?: string } = {})
     return status
   }
 
-  const summary = getCostSummary(parsed.period)
-  const currentUsd = summary.total_cost_usd
+  const breakdown = getCostBreakdown(parsed.period)
+  // Conservative: add CONSERVATIVE_ESTIMATE_MICROS_PER_CALL for each failed trace
+  // to avoid silent budget overruns when parse failures hide actual costs.
+  const estimatedFailedMicros = breakdown.failed_count * CONSERVATIVE_ESTIMATE_MICROS_PER_CALL
+  const currentMicros = breakdown.confirmed_micros + estimatedFailedMicros
+  const currentUsd = currentMicros / 1_000_000
   const limitUsd = parsed.usd_limit
   const scope: BudgetScope = { toolName: row.tool_name, resource: row.resource }
 
   let status: BudgetStatus
-  if (summary.total_calls === 0) {
+  if (breakdown.total_calls === 0) {
     status = { status: 'no_cost_data', appliedPolicyId: row.id, scope, period: parsed.period, limitUsd }
   } else if (currentUsd >= limitUsd) {
     status = { status: 'over_budget', appliedPolicyId: row.id, scope, currentUsd, limitUsd, period: parsed.period, overage: currentUsd - limitUsd }

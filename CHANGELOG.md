@@ -4,6 +4,54 @@ All notable changes to `gijun-ai` are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.3.0-pre] — 2026-04-29
+
+### Context
+
+P1 of the DA-chain-agreed feature set (Tier 1, session /tmp/da-chain-1777450152).
+Introduces the cost-parsing abstraction layer: provider-specific API responses are now
+normalised into a `CostEntry` with integer micros, parse status, and cost provenance.
+Budget aggregation uses the new canonical field; legacy rows are seamlessly bridged.
+DB migration 006 adds 5 columns to `traces` (append-only, no backfill UPDATE).
+Test count: 100 (was 87).
+
+### Added
+
+- **`packages/core/src/cost/`** — multi-provider cost parsing module:
+  - `types.ts` — `CostEntry`, `ParseStatus`, `CostSource`, `usdToMicros()`, `microsToUsd()`
+  - `pricing.ts` — `ANTHROPIC_PRICING`, `OPENAI_PRICING` tables (per-million pricing);
+    `CONSERVATIVE_ESTIMATE_MICROS_PER_CALL` fallback; `computeCostMicros()` helper
+  - `parsers/types.ts` — `ICostParser`, `IPricingStrategy` interfaces (SRP separation)
+  - `parsers/claude.ts` — `ClaudeParser` + `AnthropicPricingStrategy`
+  - `parsers/openai.ts` — `OpenAIParser` + `OpenAIPricingStrategy`
+  - `parsers/registry.ts` — `registerParser()`, `getParser()`, `parseAuto()`;
+    auto-registers Claude + OpenAI parsers on load
+  - `index.ts` — barrel re-export
+- **`migrations/006_cost_parse_status.sql`** — adds to `traces`:
+  `parse_status` TEXT (success|failed|legacy), `parse_error` TEXT,
+  `raw_payload_hash` TEXT (sha256:hex format), `cost_usd_micros` INTEGER (canonical),
+  `cost_source` TEXT (parsed|estimated|legacy); composite index on (parse_status, cost_source, created_at).
+  **No UPDATE backfill** — append-only principle preserved.
+- **`recordTraceFromCostEntry()`** in `tracer/service.ts` — inserts a trace row
+  from a `CostEntry`; writes `cost_usd_micros` (canonical) and backfills `cost_usd`
+  for legacy readers.
+- **`__tests__/cost-parsers.test.ts`** — 14 parser unit tests.
+- **`__tests__/cost-trace-integration.test.ts`** — 8 integration + round-trip tests.
+
+### Changed
+
+- `getCostSummary()` — falls back to `cost_usd` for rows where `cost_usd_micros IS NULL`
+  (pre-migration rows) so the budget gate remains continuous across migrations.
+- `checkBudget()` — applies `CONSERVATIVE_ESTIMATE_MICROS_PER_CALL` for each
+  `parse_status='failed'` trace, preventing silent budget overruns when parsing fails.
+- `assertSchemaChain` in `packages/server/src/server.ts` — adds `006_cost_parse_status`.
+- `packages/core/src/index.ts` — exports all cost/* types and functions.
+
+### Deprecated
+
+- `cost_usd` column in `traces` — `cost_usd_micros` is now canonical. `cost_usd` will be
+  removed in migration 007 after a 30-day dry-run period (target: v0.3.0 GA).
+
 ## [0.2.1] — 2026-04-29
 
 ### Context
