@@ -99,8 +99,6 @@ const AddTaskStepSchema = z.object({
   latencyMs: z.number().int().optional(),
 })
 
-const ApproveHitlSchema = z.object({ id: z.number().int() })
-
 const AppendAuditSchema = z.object({
   eventType: z.string().min(1),
   action: z.string().min(1),
@@ -215,8 +213,13 @@ export const TOOLS: ToolDef[] = [
       const { id, ...body } = a
       return c.post(`/tasks/${id}/steps`, body)
     }),
-  def('approve_hitl', 'Record a human approval for a HITL-gated task. WRITES to DB.', ApproveHitlSchema,
-    (a, c) => c.post(`/tasks/${a.id}/hitl-approve`)),
+  // approve_hitl is intentionally absent from MCP tools.
+  // Approving a HITL gate via the same channel the agent uses would let the agent
+  // self-approve, defeating the gate's purpose. Human approval must come through a
+  // separate path: REST API directly, or `pnpm approve-hitl <id>`.
+  // Scope: this removes only the MCP path. An agent with shell access and the token
+  // could still call the REST endpoint directly — this is an accepted residual risk
+  // for a single-user local tool. Multi-user deployments should use token separation.
   def('append_audit', 'Append an immutable audit event to the hash chain. WRITES to DB.', AppendAuditSchema,
     (a, c) => c.post('/audit', a)),
   def('create_knowledge', 'Create a knowledge-store item in a specific layer. WRITES to DB.', CreateKnowledgeSchema,

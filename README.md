@@ -441,7 +441,7 @@ Each ASI claim below carries a verification label so readers know which claims a
 ### ASI06 — Sensitive Information Disclosure
 
 **Countermeasure**: redaction via `payload` blank + `original_hash` preservation. Subject-access-rights requests can blank PII without breaking the audit chain.
-**Scope (honest)**: `redactPayload` matches **4 patterns** at the time of writing: `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…` (see `audit/service.ts:7-12`). It does **not** match AWS access keys (`AKIA…`), GCP API keys, Stripe `sk_live_…`, Slack tokens (`xoxb-…`), JWTs, OpenAI Project keys, or PII (emails, phone numbers, KR resident IDs). Externalising the pattern set is partially complete: v0.2.0 introduced [`docs/audit-event-schema.md`](./docs/audit-event-schema.md) (SSOT for the `audit_events` table shape, hash-chain semantics, and redaction contract) and `pnpm sync:readme` (regenerator that pins the pattern table below to `packages/core/src/audit/service.ts`). Adding `audit_events.redaction_policy_hash` so audit reproducibility survives policy changes is deferred to v0.3+. Until then, broader redaction is the operator's responsibility — see [`docs/legal.md`](./docs/legal.md).
+**Scope (honest)**: `redactPayload` matches **8 patterns**: `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…`, AWS Access Key ID (`AKIA`/`ASIA`), AWS Secret Key (keyword-context), GCP private key (PEM block), Azure Storage Account Key (see `audit/service.ts`). It does **not** match AWS Secret Key without keyword context (false-positive risk), Stripe `sk_live_…`, Slack tokens (`xoxb-…`), JWTs, or PII (emails, phone numbers, KR resident IDs). Externalising the pattern set is partially complete: v0.2.0 introduced [`docs/audit-event-schema.md`](./docs/audit-event-schema.md) (SSOT for the `audit_events` table shape, hash-chain semantics, and redaction contract) and `pnpm sync:readme` (regenerator that pins the pattern table below to `packages/core/src/audit/service.ts`). Adding `audit_events.redaction_policy_hash` so audit reproducibility survives policy changes is deferred to v0.3+. Until then, broader redaction is the operator's responsibility — see [`docs/legal.md`](./docs/legal.md).
 **Modules**: `packages/core/src/audit/service.ts` (`redactPayload`)
 
 **Pattern table (kept in sync with code via `pnpm sync:readme`):**
@@ -456,6 +456,10 @@ Each ASI claim below carries a verification label so readers know which claims a
 | 2 | `/sk-ant-[A-Za-z0-9_-]{20,}/` | — |
 | 3 | `/Bearer\s+[A-Za-z0-9._-]{20,}/` | — |
 | 4 | `/ghp_[A-Za-z0-9]{36}/` | GitHub personal access tokens |
+| 5 | `/(?:AKIA\|ASIA)[0-9A-Z]{16}/` | AWS Access Key ID (long-term + STS temporary) |
+| 6 | `/(?:aws_?secret\|secret_?access_?key)\s*[=:"'\s]+[A-Za-z0-9/+=]{40}/i` | AWS Secret Key (keyword context) |
+| 7 | `/-----BEGIN(?:\s+[A-Z]+)?\s+PRIVATE KEY-----/i` | GCP private key PEM block |
+| 8 | `/AccountKey=[A-Za-z0-9+\/]{86}==/` | Azure Storage Account Key |
 
 <!-- generated:asi06-patterns:end -->
 

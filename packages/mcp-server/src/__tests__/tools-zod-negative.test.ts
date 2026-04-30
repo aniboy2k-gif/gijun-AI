@@ -65,10 +65,7 @@ const INVALID: Record<string, InvalidCase[]> = {
     { name: 'missing stepNo', input: { id: 1 }, reason: 'stepNo required' },
     { name: 'stepNo zero', input: { id: 1, stepNo: 0 }, reason: 'stepNo min(1)' },
   ],
-  approve_hitl: [
-    { name: 'missing id', input: {}, reason: 'id required' },
-    { name: 'id string', input: { id: 'abc' }, reason: 'id must be int' },
-  ],
+  // approve_hitl removed from MCP — no INVALID entry needed
   append_audit: [
     { name: 'missing fields', input: {}, reason: 'eventType+action required' },
     { name: 'missing action', input: { eventType: 'x' }, reason: 'action required' },
