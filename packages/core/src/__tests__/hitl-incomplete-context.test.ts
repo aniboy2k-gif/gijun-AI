@@ -44,6 +44,16 @@ test('incomplete context: complex without fields — strict=1 requires HITL, str
   assert.ok(loose.trigger.axes.includes('strict_mode_downgraded'))
 })
 
+test('incomplete context: default env (no GIJUN_HITL_STRICT_MODE) enforces HITL for complex without fields', () => {
+  // v0.1.2: strict is the default. GIJUN_HITL_STRICT_MODE=0 opts out.
+  const defaultDecision = evaluateHitlForTask(
+    { complexity: 'complex' },
+    { env: {} as NodeJS.ProcessEnv },  // no GIJUN_HITL_STRICT_MODE set
+  )
+  assert.equal(defaultDecision.hitlRequired, true, 'default should now require HITL (strict by default)')
+  assert.ok(defaultDecision.trigger.axes.includes('incomplete_context'))
+})
+
 test('incomplete context: trivial and standard are never escalated', () => {
   for (const c of ['trivial', 'standard'] as const) {
     const decision = evaluateHitlForTask(
