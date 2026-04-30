@@ -4,11 +4,24 @@ import { computeContentHash, computeChainHash, getGenesisHash } from './chain.js
 
 // Patterns that match common API key / token formats.
 // Applied to string values inside payload before storage.
+// Scope (8 patterns): OpenAI · Anthropic · Bearer · GitHub PAT ·
+//   AWS Access Key (AKIA/ASIA) · AWS Secret Key (keyword-context) ·
+//   GCP private key (PEM block) · Azure Storage Account Key
+// NOT covered (false-positive risk): standalone 40-char Base64, Stripe,
+//   Slack bot token, JWT, PII — tracked in v0.2 roadmap.
 const REDACT_PATTERNS: RegExp[] = [
+  // ── existing 4 ──────────────────────────────────────────────────
   /sk-[A-Za-z0-9_-]{20,}/g,
   /sk-ant-[A-Za-z0-9_-]{20,}/g,
   /Bearer\s+[A-Za-z0-9._-]{20,}/gi,
-  /ghp_[A-Za-z0-9]{36}/g,          // GitHub personal access tokens
+  /ghp_[A-Za-z0-9]{36}/g,
+  // ── AWS ─────────────────────────────────────────────────────────
+  /(?:AKIA|ASIA)[0-9A-Z]{16}/g,                              // Access Key ID (long-term + STS temporary)
+  /(?:aws_?secret|secret_?access_?key)\s*[=:"'\s]+[A-Za-z0-9/+=]{40}/gi, // Secret Key (keyword context)
+  // ── GCP ─────────────────────────────────────────────────────────
+  /-----BEGIN(?:\s+[A-Z]+)?\s+PRIVATE KEY-----/gi,           // PEM block header (JSON/YAML/env-var agnostic)
+  // ── Azure ───────────────────────────────────────────────────────
+  /AccountKey=[A-Za-z0-9+/]{86}==/g,                        // Storage Account Key (88-char Base64, always ==)
 ]
 const REDACTED_PLACEHOLDER = '[REDACTED]'
 

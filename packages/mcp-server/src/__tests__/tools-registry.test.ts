@@ -13,8 +13,17 @@ function classify(name: string): 'read' | 'write' | 'unknown' {
   return 'unknown'
 }
 
-test('tools-registry: TOOLS length is exactly 23 (READ 10 + WRITE 13)', () => {
-  assert.equal(TOOLS.length, 23)
+test('tools-registry: TOOLS length is exactly 22 (READ 10 + WRITE 12)', () => {
+  // approve_hitl removed from MCP tools — human approval must use REST API / pnpm approve-hitl
+  assert.equal(TOOLS.length, 22)
+})
+
+test('tools-registry: approve_hitl is absent (MCP self-approval prevention)', () => {
+  const names = TOOLS.map(t => t.name)
+  assert.ok(
+    !names.includes('approve_hitl'),
+    'approve_hitl must not be accessible via MCP to prevent agent self-approval',
+  )
 })
 
 test('tools-registry: every tool name is unique', () => {
@@ -66,7 +75,7 @@ test('tools-registry: 10 READ tools and 13 WRITE tools by prefix policy', () => 
   const reads = TOOLS.filter(t => classify(t.name) === 'read')
   const writes = TOOLS.filter(t => classify(t.name) === 'write')
   assert.equal(reads.length, 10, '10 READ tools expected')
-  assert.equal(writes.length, 13, '13 WRITE tools expected')
+  assert.equal(writes.length, 12, '12 WRITE tools expected (approve_hitl removed)')
 })
 
 test('tools-registry: every WRITE tool description contains "WRITES"', () => {

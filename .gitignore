@@ -8,3 +8,6 @@ dist-test
 *.db-wal
 .DS_Store
 prompt_plan.md
+
+# backup script output
+backups/

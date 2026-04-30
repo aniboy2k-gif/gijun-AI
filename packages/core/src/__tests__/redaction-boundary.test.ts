@@ -1,12 +1,13 @@
 // ASI06 redaction boundary test — pins the README claim in code.
 // Covers 5 boundary paths: input / output / log / exception stack / audit event.
-// Reference: README ASI06, prompt_plan.md Phase 5.
+// Reference: README ASI06, prompt_plan.md.
 //
-// Scope is intentionally narrow (matches README): the 4 patterns
-// `sk-…`, `sk-ant-…`, `Bearer …`, `ghp_…`. Patterns explicitly NOT
-// covered (AWS / GCP / Stripe / Slack / JWT / PII) are exercised here
-// with negative assertions so the README scope ↔ code scope link is
-// machine-checked.
+// Scope (8 patterns): OpenAI · Anthropic · Bearer · GitHub PAT ·
+//   AWS Access Key (AKIA/ASIA) · AWS Secret Key (keyword-context) ·
+//   GCP private key (PEM block) · Azure Storage Account Key
+// Patterns explicitly NOT covered (Stripe / Slack / JWT / PII / standalone
+// 40-char Base64) are exercised with negative assertions so the README
+// scope ↔ code scope link is machine-checked.
 
 import { resolve } from 'node:path'
 
@@ -22,19 +23,30 @@ import { redactPayload, appendAuditEvent, tailAuditEvents } from '../audit/servi
 // --- Fixture patterns ----------------------------------------------
 // Each pattern is paired with one secret string that should match.
 const COVERED = {
-  openai: `sk-proj-${'a'.repeat(40)}`,
-  anthropic: `sk-ant-api03-${'b'.repeat(40)}`,
-  bearer: `Bearer ${'c'.repeat(40)}`,
-  github_pat: `ghp_${'D'.repeat(36)}`,
+  // original 4
+  openai:      `sk-proj-${'a'.repeat(40)}`,
+  anthropic:   `sk-ant-api03-${'b'.repeat(40)}`,
+  bearer:      `Bearer ${'c'.repeat(40)}`,
+  github_pat:  `ghp_${'D'.repeat(36)}`,
+  // AWS
+  aws_akia:    'AKIAIOSFODNN7EXAMPLE',
+  aws_asia:    'ASIAIOSFODNN7EXAMPLE',
+  aws_secret:  `aws_secret_access_key=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`,
+  // GCP
+  gcp_pem:     '-----BEGIN RSA PRIVATE KEY-----',
+  gcp_pem_ec:  '-----BEGIN EC PRIVATE KEY-----',
+  // Azure
+  azure_key:   `AccountKey=${'a'.repeat(86)}==`,
 }
 
 // Patterns README claims are NOT covered. Used for negative assertions.
 const NOT_COVERED = {
-  aws: 'AKIAIOSFODNN7EXAMPLE',
-  stripe: `sk_live_${'e'.repeat(24)}`,
+  // AWS Secret Key without keyword context — false-positive risk too high
+  aws_secret_no_ctx: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+  stripe:    `sk_live_${'e'.repeat(24)}`,
   slack_bot: `xoxb-${'1'.repeat(11)}-${'2'.repeat(11)}-${'a'.repeat(24)}`,
-  jwt: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature',
-  email: 'alice@example.com',
+  jwt:       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature',
+  email:     'alice@example.com',
 }
 
 const REDACTED = '[REDACTED]'
