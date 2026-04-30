@@ -129,8 +129,8 @@ Six hard rules the implementation holds itself to. Every new feature must pass e
 | 1 | **Append-only audit** — existing audit rows are never mutated, only new rows appended | SQL `UPDATE`/`DELETE` absent on `audit_events`; hash chain verification in `POST /audit/integrity-check` | `[passed]` |
 | 2 | **Full migration chain preflight** — server refuses to serve until every known migration is applied in order | `assertSchemaChain([...])` called before `app.listen()` in `server.ts` | `[passed]` |
 | 3 | **Content-addressable redaction** — redaction replaces `payload` but keeps `original_hash`, so integrity survives takedowns | `audit_events.original_hash` column + chain links through `original_hash`, not the mutable payload | `[passed]` |
-| 4 | **Fail-closed authentication** — server exits at startup without `AGENTGUARD_TOKEN`; every route requires the header | Startup guard in `server.ts` + `requireToken` middleware on every router except `/health` | `[pending E2E]` |
-| 5 | **Local-only binding** — listen address is `127.0.0.1`, never a public interface | Hardcoded `HOST` in `server.ts` and `transports.ts` | `[unverified]` |
+| 4 | **Fail-closed authentication** — server exits at startup without `AGENTGUARD_TOKEN`; every route requires the header | Startup guard in `server.ts` + `requireToken` middleware on every router except `/health` | `[passed]` |
+| 5 | **Local-only binding** — listen address is `127.0.0.1`, never a public interface | Hardcoded `HOST` in `server.ts` and `transports.ts` | `[passed]` |
 | 6 | **HITL gate before irreversibility** — single-user self-approval is required before a task can transition to `done` | `evaluateHitl()` in `hitl/gate.ts` + `POST /tasks/:id/hitl-approve` + status-transition guard in `updateTaskStatus` (v0.1.1) | `[passed]` (v0.1.1) |
 
 ---
