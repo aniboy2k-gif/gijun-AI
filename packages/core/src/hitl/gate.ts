@@ -110,7 +110,8 @@ export type TaskHitlTriggerPayload = {
 }
 
 function strictModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env['GIJUN_HITL_STRICT_MODE'] === '1'
+  // v0.1.2: strict is the default. Opt out with GIJUN_HITL_STRICT_MODE=0.
+  return env['GIJUN_HITL_STRICT_MODE'] !== '0'
 }
 
 /**
@@ -122,10 +123,9 @@ function strictModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  *
  * Fail-closed principle: missing context fields escalate severity rather than
  * weaken the gate. critical complexity always requires HITL regardless of fields.
- * complex complexity requires HITL when strict mode is enabled OR all context
- * fields are present; otherwise v0.1.1 default emits a warning and lets it pass
- * (GIJUN_HITL_STRICT_MODE env var gates the transition — v0.1.2 will flip the
- * default to strict).
+ * complex complexity requires HITL unless all context fields are absent AND
+ * GIJUN_HITL_STRICT_MODE=0 is explicitly set (opt-out). v0.1.2: strict is the
+ * default; set GIJUN_HITL_STRICT_MODE=0 to restore the lenient v0.1.1 behaviour.
  */
 export function evaluateTaskHitl(
   input: TaskHitlInput,
@@ -160,7 +160,7 @@ export function evaluateTaskHitl(
       hitlRequired = false
       axes.push('strict_mode_downgraded')
       console.warn(
-        '[agentguard] complex task created without toolName/actionType/resource; HITL downgraded to 0 (set GIJUN_HITL_STRICT_MODE=1 to enforce)',
+        '[agentguard] complex task created without toolName/actionType/resource; HITL downgraded to 0 (set GIJUN_HITL_STRICT_MODE=0 to suppress)',
       )
     }
   } else {
