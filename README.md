@@ -10,7 +10,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.3.1-blue)
+![status](https://img.shields.io/badge/status-v0.2.0-blue)
 
 **Status: personal single-user tool — not a production dependency.** The HITL gate is a self-approval speed-bump for a solo developer, not multi-party governance. Fork the project if you need team mode, RBAC, or multi-user separation-of-duties.
 

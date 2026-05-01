@@ -10,7 +10,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.3.1-blue)
+![status](https://img.shields.io/badge/status-v0.2.0-blue)
 
 **Status: 개인용 1인 도구 — 프로덕션 의존성으로 사용 불가.** HITL 게이트는 1인 개발자를 위한 자기 승인(self-approval) 속도 제한 장치이지 다인 거버넌스가 아닙니다. 팀 모드·RBAC·다중 사용자 separation-of-duties가 필요하면 프로젝트를 포크하세요.
 
