@@ -31,7 +31,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => apiFetch<{ ok: boolean; version: string }>('/health'),
+  health: () => apiFetch<{ status: string }>('/health'),
   tasks: (params?: { status?: string; limit?: number }) => {
     const q = new URLSearchParams()
     if (params?.status) q.set('status', params.status)
