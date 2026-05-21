@@ -49,4 +49,9 @@ export const api = {
       `/tasks/${id}/hitl-approve`,
       { method: 'POST', body: JSON.stringify(body ?? {}) },
     ),
+  updateTaskStatus: (id: number, status: 'pending' | 'in_progress' | 'done' | 'cancelled') =>
+    apiFetch<{ task: { id: number; status: string } }>(
+      `/tasks/${id}/status`,
+      { method: 'PATCH', body: JSON.stringify({ status }) },
+    ),
 }
