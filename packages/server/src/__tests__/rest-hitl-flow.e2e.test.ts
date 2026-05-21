@@ -129,3 +129,89 @@ test('E2E auth: request without X-AgentGuard-Token returns 401', async () => {
   })
   assert.equal(res.status, 401, 'fail-closed auth must reject missing token')
 })
+
+test('E2E HITL reject: critical task PATCH cancelled does not require approval', async () => {
+  // Reject path: a task that requires HITL approval can be cancelled without
+  // prior approval. This is the backend contract behind the web "거부" button.
+  // Note: createTask sets status='pending'; hitl_required=1 is the signal
+  // the UI should match on (not status==='hitl_wait', which is only reached
+  // via explicit PATCH).
+  const createRes = await fetch(`${baseUrl}/tasks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      title: 'e2e reject task',
+      complexity: 'critical',
+      toolName: 'bash',
+      actionType: 'execute',
+      resource: 'prod-db',
+    }),
+  })
+  assert.equal(createRes.status, 201, 'task creation should succeed (201 Created)')
+  const { id } = (await createRes.json()) as { id: number }
+
+  // Initial state: status='pending', hitl_required=1, hitl_approved_at=null.
+  // This is what the UI sees as the "needs HITL" condition.
+  const getBefore = await fetch(`${baseUrl}/tasks/${id}`, { headers: authHeaders() })
+  const before = (await getBefore.json()) as {
+    status: string; hitl_required: number; hitl_approved_at: string | null
+  }
+  assert.equal(before.status, 'pending', 'critical task starts in status=pending')
+  assert.equal(before.hitl_required, 1, 'critical task must have hitl_required=1')
+  assert.equal(before.hitl_approved_at, null, 'critical task starts unapproved')
+
+  // PATCH to cancelled — should succeed without hitl-approve
+  const cancelRes = await fetch(`${baseUrl}/tasks/${id}/status`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ status: 'cancelled' }),
+  })
+  assert.equal(
+    cancelRes.status,
+    200,
+    'cancelled transition should succeed without prior approval',
+  )
+
+  // Verify the state actually changed
+  const getAfter = await fetch(`${baseUrl}/tasks/${id}`, { headers: authHeaders() })
+  const after = (await getAfter.json()) as { status: string; hitl_approved_at: string | null }
+  assert.equal(after.status, 'cancelled', 'task status should be cancelled')
+  assert.equal(after.hitl_approved_at, null, 'cancelled task should not have hitl_approved_at')
+})
+
+test('E2E HITL trigger payload: hitl_trigger field is JSON with axes string[]', async () => {
+  // The web UI parses task.hitl_trigger to display the reason in Korean.
+  // This locks the API contract: hitl_trigger is a JSON string containing
+  // { axes: string[] } — each entry is the axis code itself (e.g.
+  // 'critical_complexity'), NOT an object with a `reason` field. This is the
+  // shape produced by evaluateTaskHitl() in packages/core/src/hitl/gate.ts.
+  const createRes = await fetch(`${baseUrl}/tasks`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      title: 'e2e trigger payload',
+      complexity: 'critical',
+      toolName: 'bash',
+      actionType: 'execute',
+      resource: 'prod-db',
+    }),
+  })
+  const { id } = (await createRes.json()) as { id: number }
+
+  const getRes = await fetch(`${baseUrl}/tasks/${id}`, { headers: authHeaders() })
+  const task = (await getRes.json()) as { hitl_trigger: string | null }
+  assert.ok(task.hitl_trigger, 'critical task must record a hitl_trigger payload')
+
+  const parsed = JSON.parse(task.hitl_trigger as string) as { axes?: string[] }
+  assert.ok(Array.isArray(parsed.axes), 'hitl_trigger must contain an axes array')
+  assert.ok(parsed.axes.length > 0, 'critical task must have at least one axis')
+  assert.ok(
+    parsed.axes.includes('critical_complexity'),
+    `expected 'critical_complexity' in axes, got ${JSON.stringify(parsed.axes)}`,
+  )
+  // Lock the string-array shape: each entry must be a plain string code,
+  // not an object. This is what TasksTab.formatTrigger() relies on.
+  for (const axis of parsed.axes) {
+    assert.equal(typeof axis, 'string', `axes entry must be string, got ${typeof axis}`)
+  }
+})
