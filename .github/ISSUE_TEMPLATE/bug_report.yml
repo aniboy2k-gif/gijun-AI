@@ -1,11 +1,11 @@
 name: Bug report
-description: Report a defect in gijun-ai
+description: Report a defect in policyloop
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        **Before you file**: gijun-ai is a personal single-user tool. If your bug report
+        **Before you file**: policyloop is a personal single-user tool. If your bug report
         describes a team/multi-user scenario, please note — those paths are out of scope
         and the "fix" is likely "fork required". See `CONTRIBUTING.md`.
 

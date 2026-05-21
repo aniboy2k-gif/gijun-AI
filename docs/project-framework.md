@@ -1,6 +1,6 @@
 # Project Framework — 5 Axes of Concern
 
-> gijun-ai's concerns decompose into five orthogonal axes. Each axis has a
+> policyloop's concerns decompose into five orthogonal axes. Each axis has a
 > clear boundary rule for what belongs inside it. This avoids the original
 > 4-axis design's MECE violation where tests, CI, and plaform concerns were
 > all tangled under "reliability".

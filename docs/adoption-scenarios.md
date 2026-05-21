@@ -1,7 +1,7 @@
-# Adoption Scenarios — Is gijun-ai right for you?
+# Adoption Scenarios — Is policyloop right for you?
 
-> This document answers "should I use gijun-ai?" by scenario, not by feature.
-> The short version: gijun-ai is useful if you want to **learn** how a local
+> This document answers "should I use policyloop?" by scenario, not by feature.
+> The short version: policyloop is useful if you want to **learn** how a local
 > audit / HITL / policy layer is built, or if you want to **reference** the
 > architecture when building your own. It is **not** useful as a production
 > dependency for a team, because it is a deliberately single-user tool.
@@ -18,7 +18,7 @@
 | **Solo developer's personal workflow** — a single developer wanting to audit their own Claude Code sessions | ✓ (cautious) | This is the design target. Expect friction: manual token generation, CLI-only, no UI. If that's fine, `pnpm init && pnpm build` and you're running. |
 | **Team adoption** — multiple developers sharing a server instance | ✗ | **Not supported.** Single shared token = no per-user accountability. HITL approval cannot validate who actually approved. This is not an oversight; it is the C-1a scope decision. Fork for RBAC. |
 | **Production dependency** — staging / prod reliance on the audit chain for compliance evidence | ✗ | No CI / no SLA on security patches / no multi-instance replication / no external auditor verification procedure. See `docs/public-status-dod.md` — L4 is out of scope. |
-| **Regulatory compliance substrate** (SOC2 / ISO27001 / HIPAA) | ✗ | The audit chain is technically sound for a single-instance local record, but compliance requires far more (access controls, retention policy, disaster recovery, documented operational runbooks, auditor attestation). gijun-ai provides **none** of this ceremony. Use a vendor that does (Langfuse, Arize, etc.) or fork and build it. |
+| **Regulatory compliance substrate** (SOC2 / ISO27001 / HIPAA) | ✗ | The audit chain is technically sound for a single-instance local record, but compliance requires far more (access controls, retention policy, disaster recovery, documented operational runbooks, auditor attestation). policyloop provides **none** of this ceremony. Use a vendor that does (Langfuse, Arize, etc.) or fork and build it. |
 
 ---
 
@@ -30,13 +30,13 @@ If your situation maps to any of the `✗` rows above, consider these alternativ
 - **Production audit trail with compliance story** — build on top of your existing SIEM or use a vendor with certifications
 - **Agent policy enforcement for a team** — your IAM provider + a policy decision point (OPA, Cerbos) you already operate
 
-gijun-ai was built because none of those were the right fit for a single developer who wanted **local-first, no-cloud, no-vendor-lock, single-file SQLite** observability over their own AI agent use. If that is your constraint, gijun-ai is the answer. If not, there are better options.
+policyloop was built because none of those were the right fit for a single developer who wanted **local-first, no-cloud, no-vendor-lock, single-file SQLite** observability over their own AI agent use. If that is your constraint, policyloop is the answer. If not, there are better options.
 
 ---
 
 ## Expected friction (be honest before installing)
 
-Installing gijun-ai requires roughly this sequence:
+Installing policyloop requires roughly this sequence:
 
 1. Clone, `pnpm install`, `pnpm build`
 2. `openssl rand -hex 32` for a token; `export AGENTGUARD_TOKEN=…`
@@ -47,7 +47,7 @@ Installing gijun-ai requires roughly this sequence:
 
 Total: **~5 minutes**. The demo value of step 4 is: an API response saying `{"id": 1}`. There is no UI. There is no dashboard showing your audit events as a timeline — you can `GET /audit?n=20` but interpretation is manual.
 
-If you want one-command installation and a pretty dashboard, gijun-ai is not there yet (UI is on the `packages/web` roadmap but is not shipped in v0.1).
+If you want one-command installation and a pretty dashboard, policyloop is not there yet (UI is on the `packages/web` roadmap but is not shipped in v0.1).
 
 ---
 

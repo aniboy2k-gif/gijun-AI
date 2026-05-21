@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Before you file**: gijun-ai deliberately stays single-user. Features that require
+        **Before you file**: policyloop deliberately stays single-user. Features that require
         multi-user auth, RBAC, SaaS hosting, or team collaboration are **out of scope** —
         fork instead. See `CONTRIBUTING.md` §"What is out of scope".
 
@@ -21,7 +21,7 @@ body:
     id: proposal
     attributes:
       label: Proposed behavior
-      description: How should gijun-ai behave once this feature exists? Be concrete.
+      description: How should policyloop behave once this feature exists? Be concrete.
     validations:
       required: true
 
@@ -44,12 +44,12 @@ body:
     id: alternatives
     attributes:
       label: Alternatives considered
-      description: Have you looked at Langfuse, Arize Phoenix, OpenLLMetry, or similar? Why does gijun-ai need to solve this directly rather than suggesting you use one of those?
+      description: Have you looked at Langfuse, Arize Phoenix, OpenLLMetry, or similar? Why does policyloop need to solve this directly rather than suggesting you use one of those?
 
   - type: textarea
     id: scope-check
     attributes:
       label: Scope sanity check
-      description: Is this compatible with gijun-ai's **single-user** scope? If it requires multi-user semantics, please describe the fork path instead.
+      description: Is this compatible with policyloop's **single-user** scope? If it requires multi-user semantics, please describe the fork path instead.
     validations:
       required: true
