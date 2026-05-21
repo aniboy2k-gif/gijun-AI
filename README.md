@@ -14,7 +14,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.2.0-blue)
+![status](https://img.shields.io/badge/status-v0.5.0-blue)
 
 **Status: personal single-user tool — not a production dependency.** The HITL gate is a self-approval speed-bump for a solo developer, not multi-party governance. Fork the project if you need team mode, RBAC, or multi-user separation-of-duties.
 
@@ -498,7 +498,7 @@ v0.2 is an alpha for **solo developers running a single local instance**. Things
 - **No auth provider integration** — one `AGENTGUARD_TOKEN` per server, rotated by hand.
 - **Partial MCP coverage** — 22 tools cover the common-path agent actions; `POST /tasks/external`, `POST /knowledge/:id/restore`, playbook CRUD beyond GET, incident pattern promotion, raw policy CRUD, `POST /traces`, and `POST /verifications` are REST-only.
 - **Windows untested** — all dev on macOS Darwin 25.x; Linux expected to work.
-- **No UI** — everything is REST + MCP. A `packages/web` slot exists but is empty (P4 dashboard is the next roadmap item).
+- **Minimal UI** — read-only web dashboard (Tasks · Audit · Cost · Knowledge) with a single write action: HITL approval button on `status='hitl_wait'` tasks (since v0.5.0). Full write UI for tasks/knowledge is not yet provided; use REST or MCP for those.
 
 These are honest scope calls, not oversights. They will move out of this list one by one.
 

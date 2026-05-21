@@ -1,8 +1,51 @@
 # Changelog
 
-All notable changes to `gijun-ai` are documented here.
+All notable changes to `policyloop` (formerly `gijun-ai`) are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
+
+## [0.5.0] — 2026-05-21
+
+### Context
+
+First v0.5.x release. External-surface rename to `policyloop` (CSR #1798/#1800 DA Tier 2)
+and the first write action in the web dashboard: a HITL approval button. Internal
+package names (`@gijun-ai/core`, `@gijun-ai/server`, `@gijun-ai/web`,
+`@gijun-ai/mcp-server`), directory, GitHub repo, and env vars (`AGENTGUARD_*`) are
+unchanged — this is an external-name-only migration per user decision.
+
+### Added
+
+- **HITL approval button (web)** — `TasksTab` renders an inline `승인` button on
+  `status='hitl_wait'` rows. Confirm dialog prevents accidents; per-task pending
+  spinner; tanstack-query `invalidateQueries(['tasks'])` on success so the 5s poll
+  picks up the new state. Inline error on failure. (#34)
+- **`api.approveHitl(id, body?)`** — Web `lib/api.ts` wrapper around the existing
+  `POST /tasks/:id/hitl-approve` endpoint (token-protected). (#34)
+
+### Changed
+
+- **External name → `policyloop`** — `package.json` root `name`, README titles,
+  `Why` section heading, single-user copy, and `out-of-scope` wording all renamed.
+  README sub-line preserves the internal codename: _`gijun` (기준, the standard)
+  — internal codename · directory / npm path / GitHub repo retain the `gijun-ai`
+  name._ (#33)
+- **`readRepoVersion()`** (`packages/server/src/app.ts`) — accepts both
+  `policyloop` and `gijun-ai` as the repo identifier so legacy clones and forks
+  still produce a correct `/health.version` value. (#33)
+- **Known-limitations entry** — "No UI" → "Minimal UI: read-only dashboard with
+  HITL approval button."
+
+### Operational (no code change in this repo)
+
+- gijun-ai workspace moved from external volume to `~/workspace/gijun-ai` (bulletin-board CSR #747).
+- `pm2 startup launchd` registered (`com.PM2`) so the three PM2 processes
+  resurrect on reboot (CSR #747).
+- bulletin-board moved to `~/workspace/bulletin-board`; gijun-outbox-worker
+  inherits the new path (CSR #748).
+- External-volume originals deleted (~831MB reclaimed) (CSR #751).
+
+---
 
 ## [0.4.0] — 2026-04-29
 
