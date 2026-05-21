@@ -1,4 +1,4 @@
-# Contributing to gijun-ai
+# Contributing to policyloop
 
 > **Status: personal single-user tool.** Issues and PRs are welcome, but this is an individual maintainer's project — responses are not guaranteed. For team mode / RBAC / multi-user needs, **fork** the project.
 
@@ -6,7 +6,7 @@
 
 - Read `README.md` top-of-page **"Status"** line — this tool is a solo audit workbench, not a framework for team adoption. Feature requests that require multi-user semantics will usually be declined with a "fork required" reply.
 - Check `docs/adoption-scenarios.md` — if your use case is in a `✗` row (team adoption, production dependency, compliance), a PR here is unlikely to land. Fork instead.
-- Check `docs/public-status-dod.md` — gijun-ai targets **L2 reference-only public**. PRs that would push the project into L3 territory (community-wide SLA, response guarantees) require a separate conversation first.
+- Check `docs/public-status-dod.md` — policyloop targets **L2 reference-only public**. PRs that would push the project into L3 territory (community-wide SLA, response guarantees) require a separate conversation first.
 
 ## Local development
 
@@ -22,7 +22,7 @@ Requirements: Node.js ≥ 22 (for native `node:sqlite`), pnpm ≥ 9.
 
 ## Pull request workflow
 
-1. **Scope the PR to a single framework axis.** gijun-ai's concerns split into five axes — Branding (A) / Reliability (B) / Authority (C) / Operations (D) / Legal (E). See `docs/project-framework.md`. A good PR touches one axis; PRs that touch multiple axes should be split.
+1. **Scope the PR to a single framework axis.** policyloop's concerns split into five axes — Branding (A) / Reliability (B) / Authority (C) / Operations (D) / Legal (E). See `docs/project-framework.md`. A good PR touches one axis; PRs that touch multiple axes should be split.
 2. **Match the commit style.** Conventional Commits (`fix:`, `feat:`, `docs:`, `refactor:`, `chore:`, `ci:`, `test:`). See `git log` for examples.
 3. **Update the README claim gate.**
    - If the PR adds or modifies an `ASI` mapping claim or an `Architecture contract`, add a matching entry to `.github/claim-map.yml` so the `claim-check` CI job validates it.
@@ -32,7 +32,7 @@ Requirements: Node.js ≥ 22 (for native `node:sqlite`), pnpm ≥ 9.
 
 ## What is out of scope
 
-gijun-ai deliberately does not accept contributions for:
+policyloop deliberately does not accept contributions for:
 
 - Multi-user authentication / RBAC / per-user tokens (would change C-1a scope — fork required)
 - SaaS / cloud hosting integration

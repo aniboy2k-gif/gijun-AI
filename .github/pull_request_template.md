@@ -41,4 +41,4 @@ If this PR changes `schema_migrations` order or adds a new migration:
 
 ## Single-user scope note
 
-gijun-ai is a **personal single-user tool**. External PRs are welcome but not guaranteed a response. For team mode, RBAC, or multi-user separation-of-duties, fork the project — those features are out of scope for this repo.
+policyloop is a **personal single-user tool**. External PRs are welcome but not guaranteed a response. For team mode, RBAC, or multi-user separation-of-duties, fork the project — those features are out of scope for this repo.

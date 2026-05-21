@@ -1,6 +1,6 @@
 # Public Status — Definition of Done (DoD)
 
-> gijun-ai's level-based public status framework.
+> policyloop's level-based public status framework.
 >
 > Each level above L1 has a concrete, testable Definition of Done. A level is
 > claimed only when **every** checkbox is green — there is no "mostly L2" or
@@ -16,9 +16,9 @@
 | **L1** | Personal experiment | Code exists on disk / private | Anything public |
 | **L2** | Reference-only public | Code is public, reproducible, honestly labeled | Production adoption |
 | **L3** | PR-accepting | Community can contribute, bug reports are triaged | Team / RBAC / multi-user |
-| **L4** | Production-dependency-safe | **Out of scope for gijun-ai.** Fork required. | — (fork needed) |
+| **L4** | Production-dependency-safe | **Out of scope for policyloop.** Fork required. | — (fork needed) |
 
-gijun-ai's **current target is L2**. L3 is evaluated only after the v0.2 milestone. L4 is deliberately out of scope for this project (see `README.md` — "Out of scope (fork required)").
+policyloop's **current target is L2**. L3 is evaluated only after the v0.2 milestone. L4 is deliberately out of scope for this project (see `README.md` — "Out of scope (fork required)").
 
 ---
 
@@ -73,7 +73,7 @@ After the v0.2 milestone (E2E tests + CI matrix + OSS community assets shipped),
 
 ## L3 → L4: Production-dependency-safe — **Out of scope for this project**
 
-Reaching L4 requires multi-user authentication, RBAC, durable audit replication, 24-hour security-patch SLA, and formal compliance work (SOC2 / ISO27001 / etc.). These are all explicitly out of scope for gijun-ai.
+Reaching L4 requires multi-user authentication, RBAC, durable audit replication, 24-hour security-patch SLA, and formal compliance work (SOC2 / ISO27001 / etc.). These are all explicitly out of scope for policyloop.
 
 If you need L4-grade capabilities, **fork the project**. The MIT license allows this. The architecture is designed to be legible for adaptation in a single sitting — see `docs/project-framework.md` for the 5-axis framework that separates single-user scope from the parts that would need to be rewritten for team operation.
 
