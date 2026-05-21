@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Check, RefreshCw } from 'lucide-react'
+import { Check, RefreshCw, X } from 'lucide-react'
 
 type Task = {
   id: number; title: string; status: string; complexity: string
-  hitl_required: number; hitl_approved_at: string | null; created_at: string
+  hitl_required: number; hitl_approved_at: string | null; hitl_trigger: string | null
+  created_at: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -13,6 +14,33 @@ const STATUS_COLORS: Record<string, string> = {
   hitl_wait: 'bg-orange-100 text-orange-800',
   done: 'bg-green-100 text-green-800',
   cancelled: 'bg-gray-100 text-gray-600',
+}
+
+const TRIGGER_LABELS: Record<string, string> = {
+  irreversible: '비가역 액션',
+  blast_radius: '외부 영향',
+  critical_complexity: '임계 복잡도',
+  complex_complexity: '복잡도(컨텍스트 동반)',
+  incomplete_context: '컨텍스트 부족',
+  strict_mode_downgraded: '엄격 모드 우회',
+  verify_fail: '검증 실패',
+  low_confidence: '낮은 신뢰도',
+  complexity: '복잡도',
+}
+
+function formatTrigger(trigger: string | null): string | null {
+  if (!trigger) return null
+  try {
+    const parsed = JSON.parse(trigger) as { axes?: Array<{ reason?: string }>; reason?: string }
+    if (parsed.axes?.length) {
+      const reasons = parsed.axes.map(a => TRIGGER_LABELS[a.reason ?? ''] ?? a.reason).filter(Boolean)
+      return reasons.length ? reasons.join(', ') : null
+    }
+    if (parsed.reason) return TRIGGER_LABELS[parsed.reason] ?? parsed.reason
+    return null
+  } catch {
+    return null
+  }
 }
 
 export function TasksTab() {
@@ -30,6 +58,11 @@ export function TasksTab() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   })
 
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) => api.updateTaskStatus(id, 'cancelled'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  })
+
   if (isLoading) return <Skeleton />
   if (isError) return <ErrorState onRetry={() => void refetch()} />
 
@@ -40,6 +73,15 @@ export function TasksTab() {
     if (!confirm(`HITL 승인: #${task.id} "${task.title}"\n\n승인 후 작업이 진행됩니다. 계속하시겠습니까?`)) return
     approveMutation.mutate(task.id)
   }
+
+  const handleReject = (task: Task) => {
+    if (!confirm(`HITL 거부: #${task.id} "${task.title}"\n\n작업을 취소(cancelled)로 전환합니다. 계속하시겠습니까?`)) return
+    rejectMutation.mutate(task.id)
+  }
+
+  const mutationError = (approveMutation.isError && (approveMutation.error as Error).message)
+    || (rejectMutation.isError && (rejectMutation.error as Error).message)
+    || null
 
   return (
     <div className="space-y-4">
@@ -58,8 +100,8 @@ export function TasksTab() {
         </button>
       </div>
 
-      {approveMutation.isError && (
-        <p className="text-xs text-red-600 px-1">승인 실패: {(approveMutation.error as Error).message}</p>
+      {mutationError && (
+        <p className="text-xs text-red-600 px-1">처리 실패: {mutationError}</p>
       )}
 
       {tasks.length === 0 ? (
@@ -68,6 +110,8 @@ export function TasksTab() {
         <div className="space-y-2">
           {tasks.map(task => {
             const isApproving = approveMutation.isPending && approveMutation.variables === task.id
+            const isRejecting = rejectMutation.isPending && rejectMutation.variables === task.id
+            const triggerText = task.status === 'hitl_wait' ? formatTrigger(task.hitl_trigger) : null
             return (
               <div key={task.id}
                 className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50">
@@ -75,17 +119,29 @@ export function TasksTab() {
                   <p className="text-sm font-medium truncate">{task.title}</p>
                   <p className="text-xs text-muted-foreground">
                     #{task.id} · {task.complexity} · {new Date(task.created_at).toLocaleDateString('ko')}
+                    {triggerText && (
+                      <span className="ml-2 text-orange-700">· HITL: {triggerText}</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
                   {task.status === 'hitl_wait' && (
-                    <button type="button"
-                      onClick={() => handleApprove(task)}
-                      disabled={isApproving}
-                      className="flex items-center gap-1 h-6 px-2 text-xs font-medium border border-orange-300 text-orange-700 hover:bg-orange-50 rounded disabled:opacity-40">
-                      <Check size={12} className={isApproving ? 'animate-pulse' : ''} />
-                      {isApproving ? '승인 중' : '승인'}
-                    </button>
+                    <>
+                      <button type="button"
+                        onClick={() => handleApprove(task)}
+                        disabled={isApproving || isRejecting}
+                        className="flex items-center gap-1 h-6 px-2 text-xs font-medium border border-orange-300 text-orange-700 hover:bg-orange-50 rounded disabled:opacity-40">
+                        <Check size={12} className={isApproving ? 'animate-pulse' : ''} />
+                        {isApproving ? '승인 중' : '승인'}
+                      </button>
+                      <button type="button"
+                        onClick={() => handleReject(task)}
+                        disabled={isApproving || isRejecting}
+                        className="flex items-center gap-1 h-6 px-2 text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 rounded disabled:opacity-40">
+                        <X size={12} className={isRejecting ? 'animate-pulse' : ''} />
+                        {isRejecting ? '거부 중' : '거부'}
+                      </button>
+                    </>
                   )}
                   <span className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[task.status] ?? 'bg-gray-100'}`}>
                     {task.status}
