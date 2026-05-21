@@ -44,4 +44,9 @@ export const api = {
   costSummary: (period: string) => apiFetch<unknown>(`/traces/summary?period=${period}`),
   knowledgeDrafts: () => apiFetch<unknown[]>('/knowledge/drafts'),
   knowledge: () => apiFetch<unknown[]>('/knowledge'),
+  approveHitl: (id: number, body?: { approver?: string; note?: string }) =>
+    apiFetch<{ task: { id: number; status: string; hitl_approved_at: string } }>(
+      `/tasks/${id}/hitl-approve`,
+      { method: 'POST', body: JSON.stringify(body ?? {}) },
+    ),
 }
