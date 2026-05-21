@@ -1,10 +1,14 @@
 [English](./README.md) · [한국어](./README.ko.md)
 
-# gijun-ai
+# policyloop
 
 > **Set the standard. Verify the work. Learn from the session.**
 >
+> Personal AI agent governance, not enterprise policy — `policyloop` closes every decision loop.
+>
 > A personal single-user audit/verification workbench — audit, verify, and learn from every Claude/LLM session that changes something that matters.
+>
+> _`gijun` (기준, "the standard") — internal codename · directory / npm path / GitHub repo retain the `gijun-ai` name._
 
 ![version](https://img.shields.io/github/package-json/v/aniboy2k-gif/gijun-AI?color=blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -16,11 +20,11 @@
 
 ---
 
-## Why gijun-ai
+## Why policyloop
 
 Solo developers running Claude Max or similar agent tiers do serious work — ship code, touch production, edit policy documents — but the agent's reasoning, approvals, and cost footprint evaporate the moment the session ends. There's no audit trail you'd trust in a dispute, no gate to stop a half-verified idea from being executed, no memory that survives a `/clear`.
 
-**gijun-ai** is a local-first audit/verification layer that sits between you and your agent:
+**policyloop** is a local-first audit/verification layer that sits between you and your agent:
 
 - **Audit** every decision to an append-only SHA-256 hash chain that survives redaction
 - **Verify** critical actions through a 4-axis HITL (human-in-the-loop) gate before they run
@@ -162,7 +166,7 @@ The HITL surface has two distinct entry points; the README/CHANGELOG abbreviatio
 - `incomplete_context` — `complex` without context
 - `strict_mode_downgraded` — `complex` without context with `GIJUN_HITL_STRICT_MODE!=1` (warning, lets through; v0.1.2 will flip the default)
 
-The operator (you — gijun-ai is single-user) must explicitly call `POST /tasks/:id/hitl-approve` before a task can transition to `done`. This is a self-approval speed-bump against a forgetful runaway agent, not multi-party governance; fork the project if you need separation-of-duties.
+The operator (you — policyloop is single-user) must explicitly call `POST /tasks/:id/hitl-approve` before a task can transition to `done`. This is a self-approval speed-bump against a forgetful runaway agent, not multi-party governance; fork the project if you need separation-of-duties.
 
 Key files: `packages/core/src/task/service.ts`, `packages/core/src/hitl/gate.ts`
 
@@ -425,7 +429,7 @@ Each ASI claim below carries a verification label so readers know which claims a
 
 ### ASI03 — Training Data Poisoning
 
-**Scope**: out of scope for gijun-ai. We do not host or fine-tune models; upstream model hygiene is the provider's responsibility. We do, however, record the model/provider per trace so poisoning patterns can be spotted across sessions.
+**Scope**: out of scope for policyloop. We do not host or fine-tune models; upstream model hygiene is the provider's responsibility. We do, however, record the model/provider per trace so poisoning patterns can be spotted across sessions.
 **Modules**: `packages/core/src/tracer/service.ts`
 
 ### ASI04 — Model Denial of Service
@@ -558,7 +562,7 @@ The following items have explicit reopening triggers — they will move forward 
 
 ### Out of scope (fork required)
 
-gijun-ai is a single-user tool. The following are **not on the roadmap** — if you need them, fork the project:
+policyloop is a single-user tool. The following are **not on the roadmap** — if you need them, fork the project:
 
 - Multi-instance mode with leader-elected audit replication
 - Team mode with per-user tokens and RBAC
@@ -567,7 +571,7 @@ gijun-ai is a single-user tool. The following are **not on the roadmap** — if 
 
 ### Not on the roadmap
 
-Cloud-hosted SaaS, organization-level billing, model hosting, collaborative editing. If any of these sound important, gijun-ai is probably not the tool — it's built for a single developer at a single keyboard.
+Cloud-hosted SaaS, organization-level billing, model hosting, collaborative editing. If any of these sound important, policyloop is probably not the tool — it's built for a single developer at a single keyboard.
 
 ---
 

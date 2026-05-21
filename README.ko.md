@@ -1,10 +1,14 @@
 [English](./README.md) · [한국어](./README.ko.md)
 
-# gijun-ai
+# policyloop
 
 > **기준을 세우고, 검증하며, 학습한다.**
 >
+> 개인용 AI 에이전트 거버넌스 (기업 정책 도구 아님) — `policyloop`는 모든 결정 루프를 닫는다.
+>
 > 1인용 AI 에이전트 audit/검증 워크벤치 — 중요한 것을 바꾸는 모든 Claude/LLM 세션을 감사·검증·학습한다.
+>
+> _`gijun` (기준, the standard) — internal codename · 디렉토리 / npm 경로 / GitHub repo는 `gijun-ai` 그대로 유지._
 
 ![version](https://img.shields.io/github/package-json/v/aniboy2k-gif/gijun-AI?color=blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -16,11 +20,11 @@
 
 ---
 
-## gijun-ai가 필요한 이유
+## policyloop가 필요한 이유
 
 Claude Max 또는 유사한 에이전트 티어를 사용하는 개인 개발자들은 진짜 중요한 일을 합니다 — 코드를 릴리스하고, 프로덕션을 건드리고, 정책 문서를 수정합니다. 그러나 에이전트의 추론·승인·비용 흔적은 세션이 끝나는 순간 모두 사라집니다. 분쟁 시 믿을 만한 감사 로그도 없고, 어설프게 검증된 아이디어의 실행을 막을 게이트도 없으며, `/clear` 이후에도 남는 메모리도 없습니다.
 
-**gijun-ai**는 사용자와 에이전트 사이에 위치하는 로컬 우선 audit/검증 레이어입니다:
+**policyloop**는 사용자와 에이전트 사이에 위치하는 로컬 우선 audit/검증 레이어입니다:
 
 - **Audit** — 모든 결정을 append-only SHA-256 해시 체인으로 기록하여 redaction 이후에도 무결성 유지
 - **Verify** — 중요한 작업은 실행 전에 4축 HITL(Human-In-The-Loop) 게이트를 통과해야 합니다
@@ -147,7 +151,7 @@ AGENTGUARD_TOKEN="$AGENTGUARD_TOKEN" \
 
 ### 2. Task + HITL Gate — 4축 트리거
 
-작업은 `complexity` 축(`trivial | standard | complex | critical`)을 가집니다. HITL 평가는 네 가지 차원을 결합합니다: **irreversibility**, **blast_radius**, **complexity**, **verify_fail**. 어느 한 축이라도 임계치를 넘으면 작업은 `hitl_wait` 상태로 전환됩니다. 운영자(= 당신 — gijun-ai는 1인용)가 직접 `POST /tasks/:id/hitl-approve`를 호출해야 비가역 실행이 진행됩니다. 이는 잊혀진 폭주 에이전트에 대한 **자기 승인 속도 제한** 장치이지 다인 거버넌스가 아닙니다. separation-of-duties가 필요하면 포크가 필수입니다.
+작업은 `complexity` 축(`trivial | standard | complex | critical`)을 가집니다. HITL 평가는 네 가지 차원을 결합합니다: **irreversibility**, **blast_radius**, **complexity**, **verify_fail**. 어느 한 축이라도 임계치를 넘으면 작업은 `hitl_wait` 상태로 전환됩니다. 운영자(= 당신 — policyloop는 1인용)가 직접 `POST /tasks/:id/hitl-approve`를 호출해야 비가역 실행이 진행됩니다. 이는 잊혀진 폭주 에이전트에 대한 **자기 승인 속도 제한** 장치이지 다인 거버넌스가 아닙니다. separation-of-duties가 필요하면 포크가 필수입니다.
 
 주요 파일: `packages/core/src/task/service.ts`, `packages/core/src/hitl/gate.ts`
 
@@ -408,7 +412,7 @@ OWASP의 Agentic Security Initiative top-10을 본 코드베이스에 매핑. **
 
 ### ASI03 — Training Data Poisoning
 
-**범위**: gijun-ai 범위 외. 우리는 모델을 호스팅하거나 파인튜닝하지 않음 — 업스트림 모델 위생은 제공자 책임. 다만 trace별로 모델/제공자를 기록하므로 세션 전반에 걸쳐 오염 패턴을 발견할 수 있음.
+**범위**: policyloop 범위 외. 우리는 모델을 호스팅하거나 파인튜닝하지 않음 — 업스트림 모델 위생은 제공자 책임. 다만 trace별로 모델/제공자를 기록하므로 세션 전반에 걸쳐 오염 패턴을 발견할 수 있음.
 **모듈**: `packages/core/src/tracer/service.ts`
 
 ### ASI04 — Model Denial of Service
@@ -521,7 +525,7 @@ DA-chain 합의 기능 집합 (P0 + P1 + P2). 점진적 감사 검증, 다중 �
 
 ### 범위 외 (포크가 필요함)
 
-gijun-ai는 1인용 도구입니다. 아래 항목은 **로드맵에 없음** — 필요하면 프로젝트를 포크하세요:
+policyloop는 1인용 도구입니다. 아래 항목은 **로드맵에 없음** — 필요하면 프로젝트를 포크하세요:
 
 - 리더 선출 기반 감사 복제 멀티 인스턴스 모드
 - 사용자별 토큰과 RBAC가 있는 팀 모드
@@ -530,7 +534,7 @@ gijun-ai는 1인용 도구입니다. 아래 항목은 **로드맵에 없음** �
 
 ### 로드맵에 없는 것
 
-클라우드 호스팅 SaaS, 조직 단위 과금, 모델 호스팅, 협업 편집. 이 중 하나라도 중요하게 들린다면 gijun-ai는 맞는 도구가 아닙니다 — 단일 키보드 앞의 단일 개발자를 위해 만들어졌습니다.
+클라우드 호스팅 SaaS, 조직 단위 과금, 모델 호스팅, 협업 편집. 이 중 하나라도 중요하게 들린다면 policyloop는 맞는 도구가 아닙니다 — 단일 키보드 앞의 단일 개발자를 위해 만들어졌습니다.
 
 ---
 

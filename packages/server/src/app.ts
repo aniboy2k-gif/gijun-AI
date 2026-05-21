@@ -26,7 +26,7 @@ function readRepoVersion(): string {
   for (const p of candidates) {
     try {
       const pkg = JSON.parse(readFileSync(p, 'utf8')) as { name?: string; version?: string }
-      if (pkg.name === 'gijun-ai' && pkg.version) return pkg.version
+      if ((pkg.name === 'policyloop' || pkg.name === 'gijun-ai') && pkg.version) return pkg.version
     } catch {
       // try next candidate
     }
