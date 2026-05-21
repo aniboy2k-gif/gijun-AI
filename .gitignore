@@ -9,5 +9,8 @@ dist-test
 .DS_Store
 prompt_plan.md
 
+# pnpm workspace — package-lock.json is npm artifact, not used here
+package-lock.json
+
 # backup script output
 backups/
