@@ -31,11 +31,15 @@ const TRIGGER_LABELS: Record<string, string> = {
 function formatTrigger(trigger: string | null): string | null {
   if (!trigger) return null
   try {
-    const parsed = JSON.parse(trigger) as { axes?: Array<{ reason?: string }>; reason?: string }
+    // hitl_trigger is produced by evaluateTaskHitl() in
+    // packages/core/src/hitl/gate.ts. axes is a string[] of axis codes
+    // (e.g. 'critical_complexity'), not an object array.
+    const parsed = JSON.parse(trigger) as { axes?: string[]; reason?: string }
     if (parsed.axes?.length) {
-      const reasons = parsed.axes.map(a => TRIGGER_LABELS[a.reason ?? ''] ?? a.reason).filter(Boolean)
-      return reasons.length ? reasons.join(', ') : null
+      const labels = parsed.axes.map(a => TRIGGER_LABELS[a] ?? a).filter(Boolean)
+      return labels.length ? labels.join(', ') : null
     }
+    // Step-level fallback: evaluateStepHitl returns { reason: ... }.
     if (parsed.reason) return TRIGGER_LABELS[parsed.reason] ?? parsed.reason
     return null
   } catch {
@@ -67,7 +71,15 @@ export function TasksTab() {
   if (isError) return <ErrorState onRetry={() => void refetch()} />
 
   const tasks = data ?? []
-  const hitlPending = tasks.filter(t => t.status === 'hitl_wait')
+  // A task "needs HITL" when hitl_required=1, not yet approved, and not in a
+  // terminal state. createTask sets status='pending' even for critical tasks,
+  // so matching only on status==='hitl_wait' would never show the button.
+  const needsHitl = (t: Task): boolean =>
+    t.hitl_required === 1
+    && t.hitl_approved_at === null
+    && t.status !== 'done'
+    && t.status !== 'cancelled'
+  const hitlPending = tasks.filter(needsHitl)
 
   const handleApprove = (task: Task) => {
     if (!confirm(`HITL 승인: #${task.id} "${task.title}"\n\n승인 후 작업이 진행됩니다. 계속하시겠습니까?`)) return
@@ -111,7 +123,8 @@ export function TasksTab() {
           {tasks.map(task => {
             const isApproving = approveMutation.isPending && approveMutation.variables === task.id
             const isRejecting = rejectMutation.isPending && rejectMutation.variables === task.id
-            const triggerText = task.status === 'hitl_wait' ? formatTrigger(task.hitl_trigger) : null
+            const showHitl = needsHitl(task)
+            const triggerText = showHitl ? formatTrigger(task.hitl_trigger) : null
             return (
               <div key={task.id}
                 className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50">
@@ -125,7 +138,7 @@ export function TasksTab() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
-                  {task.status === 'hitl_wait' && (
+                  {showHitl && (
                     <>
                       <button type="button"
                         onClick={() => handleApprove(task)}
