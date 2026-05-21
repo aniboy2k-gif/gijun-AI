@@ -14,7 +14,7 @@
 ![license](https://img.shields.io/badge/license-MIT-green)
 ![node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)
 ![pnpm](https://img.shields.io/badge/pnpm-%E2%89%A59-orange)
-![status](https://img.shields.io/badge/status-v0.2.0-blue)
+![status](https://img.shields.io/badge/status-v0.5.0-blue)
 
 **Status: 개인용 1인 도구 — 프로덕션 의존성으로 사용 불가.** HITL 게이트는 1인 개발자를 위한 자기 승인(self-approval) 속도 제한 장치이지 다인 거버넌스가 아닙니다. 팀 모드·RBAC·다중 사용자 separation-of-duties가 필요하면 프로젝트를 포크하세요.
 
@@ -461,7 +461,7 @@ v0.1은 **단일 로컬 인스턴스를 운영하는 1인 개발자**를 위한 
 - **인증 공급자 통합 없음** — 서버당 `AGENTGUARD_TOKEN` 하나, 수동 회전.
 - **부분 MCP 커버리지** — 22개 도구는 공통 경로 에이전트 동작을 다룸; `POST /tasks/external`, `POST /knowledge/:id/restore`, playbook CRUD(GET 제외), incident 패턴 승격, 원시 policy CRUD, `POST /traces` / `POST /verifications`는 REST 전용.
 - **Windows 미검증** — 모든 개발은 macOS Darwin 25.x에서; Linux는 작동 예상.
-- **UI 없음** — 모든 것은 REST + MCP. `packages/web` 슬롯이 있으나 비어 있음 (P4 대시보드 진행 중).
+- **최소 UI** — 읽기 전용 웹 대시보드(Tasks · Audit · Cost · Knowledge)에 단일 쓰기 액션: `status='hitl_wait'` 작업의 HITL 승인 버튼(v0.5.0부터). task/knowledge 전체 쓰기 UI는 아직 미제공 — REST/MCP 사용.
 
 이는 간과가 아닌 정직한 스코프 판단입니다. 하나씩 이 목록에서 빠져나갈 것입니다.
 
