@@ -11,6 +11,7 @@ import {
   writeSync,
 } from 'node:fs'
 import { dirname, resolve as pathResolve } from 'node:path'
+import { validTestMode } from './test-mode.js'
 
 const TOKEN_KEY = 'AGENTGUARD_TOKEN'
 
@@ -24,10 +25,18 @@ export class EnvFileError extends Error {
 export function resolveEnvFilePath(): string {
   const override = process.env['AGENTGUARD_ENV_FILE']
   if (override) {
+    // CSR #775 P2 C1: NODE_ENV alone is bypassable via env injection (DeepSeek R4).
+    // Require BOTH NODE_ENV=test AND a valid AGENTGUARD_TEST_MODE HMAC token.
     if (process.env['NODE_ENV'] !== 'test') {
       throw new EnvFileError(
         'env_file_override_in_non_test',
         'AGENTGUARD_ENV_FILE is only honored when NODE_ENV=test',
+      )
+    }
+    if (!validTestMode(process.env['AGENTGUARD_TEST_MODE'])) {
+      throw new EnvFileError(
+        'env_file_override_missing_valid_hmac',
+        'AGENTGUARD_ENV_FILE requires a valid AGENTGUARD_TEST_MODE HMAC token',
       )
     }
     return pathResolve(override)

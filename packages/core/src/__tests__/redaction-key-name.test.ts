@@ -71,3 +71,23 @@ test('redactPayload: key "refresh_token" / "access_token" redacted', () => {
   assert.equal(out.refresh_token, '[REDACTED]')
   assert.equal(out.access_token, '[REDACTED]')
 })
+
+// CSR #775 H-INT-2: AGENTGUARD_CONFIG_HMAC_KEY parity with other secrets
+test('redactPayload: key "hmac_key" / "agentguard_config_hmac_key" / "config_hmac_key" redacted', () => {
+  const out = redactPayload({
+    hmac_key: HEX_TOKEN,
+    agentguard_config_hmac_key: HEX_TOKEN,
+    config_hmac_key: HEX_TOKEN,
+  }) as Record<string, unknown>
+  assert.equal(out.hmac_key, '[REDACTED]')
+  assert.equal(out.agentguard_config_hmac_key, '[REDACTED]')
+  assert.equal(out.config_hmac_key, '[REDACTED]')
+})
+
+test('redactPayload: nested hmac-key variants redacted', () => {
+  const out = redactPayload({
+    auth: { hmac_key: HEX_TOKEN, 'hmac-key': HEX_TOKEN },
+  }) as { auth: Record<string, unknown> }
+  assert.equal(out.auth['hmac_key'], '[REDACTED]')
+  assert.equal(out.auth['hmac-key'], '[REDACTED]')
+})

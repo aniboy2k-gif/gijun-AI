@@ -1,5 +1,6 @@
 import { test, before, after, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
+import crypto from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -12,11 +13,17 @@ const INITIAL_TOKEN = 'test-token-rotate-initial'
 const TMP_DIR = mkdtempSync(resolve(tmpdir(), 'gijun-rotate-test-'))
 const ENV_FILE = resolve(TMP_DIR, '.env.local')
 
+// CSR #775 P2 C1: AGENTGUARD_ENV_FILE 사용 시 HMAC token도 필요
 process.env['NODE_ENV'] = 'test'
 process.env['GIJUN_DB_PATH'] = ':memory:'
 process.env['GIJUN_MIGRATIONS_PATH'] = resolve(__dirname, '../../../../migrations')
 process.env['AGENTGUARD_TOKEN'] = INITIAL_TOKEN
+process.env['AGENTGUARD_CONFIG_HMAC_KEY'] = crypto.randomBytes(32).toString('hex')
 process.env['AGENTGUARD_ENV_FILE'] = ENV_FILE
+
+// test-mode must be imported BEFORE env-file for HMAC_KEY capture
+const testMode = await import('../auth/test-mode.js')
+process.env['AGENTGUARD_TEST_MODE'] = testMode.generateTestMode(Date.now() + 600_000) // 10min TTL
 
 const { createApp } = await import('../app.js')
 const core = await import('@gijun-ai/core')
@@ -44,6 +51,8 @@ after(async () => {
   delete process.env['GIJUN_MIGRATIONS_PATH']
   delete process.env['AGENTGUARD_TOKEN']
   delete process.env['AGENTGUARD_ENV_FILE']
+  delete process.env['AGENTGUARD_CONFIG_HMAC_KEY']
+  delete process.env['AGENTGUARD_TEST_MODE']
 })
 
 beforeEach(() => {

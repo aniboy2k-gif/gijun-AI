@@ -28,7 +28,9 @@ const REDACTED_PLACEHOLDER = '[REDACTED]'
 // Key-name patterns: any payload key matching these is redacted regardless of
 // value shape. Covers high-entropy secrets that value-pattern regex misses
 // (e.g., lowercase hex tokens like AGENTGUARD_TOKEN).
-const REDACT_KEY_PATTERN = /(^|_)(token|secret|password|api[_-]?key|authorization|cookie|session[_-]?id|refresh[_-]?token|access[_-]?token)$/i
+// H-INT-2 (Internal review fix): hmac[_-]?key added — AGENTGUARD_CONFIG_HMAC_KEY
+// parity with other secrets (managed via KMS/HSM per docs/migration-CSR-775.md §1).
+const REDACT_KEY_PATTERN = /(^|_)(token|secret|password|api[_-]?key|authorization|cookie|session[_-]?id|refresh[_-]?token|access[_-]?token|hmac[_-]?key)$/i
 
 function redactString(s: string): string {
   let result = s

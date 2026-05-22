@@ -1,6 +1,13 @@
-import { runMigrations, assertSchemaChain, closeDb } from '@gijun-ai/core'
+import { runMigrations, assertSchemaChain, closeDb, currentDbPath } from '@gijun-ai/core'
 import { createApp } from './app.js'
 import { sweepTmpFiles } from './auth/env-file.js'
+import { assertSingleInstance } from './auth/cluster-guard.js'
+import { applyAppendOnlyFlagAtBoot } from './audit/append-only-flag.js'
+
+// CSR #775 P4 M6: fail-closed cluster/worker_threads/forked child detection.
+// Token holder's rotateInFlight boolean mutex is process-local; cluster mode
+// or worker_threads break the invariant. Refuse to boot in unsafe topology.
+assertSingleInstance()
 
 // fail-closed: token must be set before any request can succeed
 if (!process.env['AGENTGUARD_TOKEN']) {
@@ -26,6 +33,16 @@ runMigrations()
 
 // Verify full migration chain before accepting requests (contract #2).
 assertSchemaChain(['001_initial', '002_original_hash', '003_original_hash_type', '004_cost_budget', '005_policy_eval_index', '006_cost_parse_status', '007_knowledge_status', '008_external_sync'])
+
+// CSR #775 P7 H3: apply OS append-only flag to audit DB file (production fail-closed).
+// H-INT-1 (Internal review fix): use currentDbPath() to cover ALL canonical paths
+// (AGENTGUARD_DB_PATH > GIJUN_DB_PATH > default <cwd>/.agentguard/agentguard.db).
+// Previous logic used only process.env['GIJUN_DB_PATH'] which silently skipped
+// the protection for the canonical AGENTGUARD_DB_PATH and default-path deployments.
+const auditDbPath = currentDbPath()
+if (auditDbPath !== ':memory:') {
+  applyAppendOnlyFlagAtBoot(auditDbPath)
+}
 
 process.on('exit', () => closeDb())
 
