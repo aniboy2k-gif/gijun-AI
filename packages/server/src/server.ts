@@ -2,6 +2,7 @@ import { runMigrations, assertSchemaChain, closeDb } from '@gijun-ai/core'
 import { createApp } from './app.js'
 import { sweepTmpFiles } from './auth/env-file.js'
 import { assertSingleInstance } from './auth/cluster-guard.js'
+import { applyAppendOnlyFlagAtBoot } from './audit/append-only-flag.js'
 
 // CSR #775 P4 M6: fail-closed cluster/worker_threads/forked child detection.
 // Token holder's rotateInFlight boolean mutex is process-local; cluster mode
@@ -32,6 +33,13 @@ runMigrations()
 
 // Verify full migration chain before accepting requests (contract #2).
 assertSchemaChain(['001_initial', '002_original_hash', '003_original_hash_type', '004_cost_budget', '005_policy_eval_index', '006_cost_parse_status', '007_knowledge_status', '008_external_sync'])
+
+// CSR #775 P7 H3: apply OS append-only flag to audit DB file (production fail-closed).
+// Skip when DB path is :memory: (test mode) or unset (cannot resolve default reliably).
+const auditDbPath = process.env['GIJUN_DB_PATH']
+if (auditDbPath && auditDbPath !== ':memory:') {
+  applyAppendOnlyFlagAtBoot(auditDbPath)
+}
 
 process.on('exit', () => closeDb())
 

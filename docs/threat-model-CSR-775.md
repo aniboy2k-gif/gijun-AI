@@ -140,6 +140,21 @@ cluster mode·worker_threads·child_process.fork 모두 boot abort. Multi-proces
 - **C2 (P1 ✅)**: AGENTGUARD_CONFIG_HMAC_KEY 필수 + boot-epoch anti-replay + TTL
 - **L11 (P9 예정)**: CWD allowlist (Plan v1) → AGENTGUARD_TEST_MODE HMAC env var (Plan v2 통합)
 
+### 6.1 P8 M8 — fs.watch symlink race (N/A 박제)
+
+**결정**: 본 PR scope에서 **N/A** — fs.watch / SIGHUP reload mechanism 자체가 미구현.
+
+근거:
+- 현재 `env-file.ts`는 `resolveEnvFilePath()`로 boot 시점 1회 path 확인 + `persistTokenToEnvFile()`로 token rotation 시점에 write
+- reload 또는 fs.watch handler 코드 미존재 → symlink race가 발생할 surface 자체가 없음
+- R3 Claude Web R3-H3 권고는 "boot-once + fs.watch + SIGHUP" 패턴 — 신규 reload 기능 도입 시 적용할 hardening 가이드
+
+향후 reload 도입 시 답습 권고:
+1. boot 시점 `lstat` + `isSymbolicLink()` 체크 → throw `env_file_symlink_blocked` (이미 `persistTokenToEnvFile`에 구현됨, line 84)
+2. `fs.watch` handler에 hash 재검증 추가 — content read 후 sha256 비교, mismatch → fail-closed
+3. SIGHUP signal handler로 명시적 reload 요청만 허용 (silent re-read 금지)
+4. `flock` advisory lock + read-fd + fstat 패턴으로 TOCTOU window 차단
+
 ## 7. References
 
 - 출처 DA: `/tmp/da-chain-1779432199/final.txt` (CSR #771 4-AI Tier 1 security)
