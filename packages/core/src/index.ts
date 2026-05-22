@@ -1,4 +1,4 @@
-export { getDb, runMigrations, closeDb, assertSchemaChain } from './db/client.js'
+export { getDb, runMigrations, closeDb, assertSchemaChain, currentDbPath } from './db/client.js'
 
 export { appendAuditEvent, insertAuditEventInTx, tailAuditEvents, redactPayload, AuditEventSchema } from './audit/service.js'
 export type { AuditEventInput } from './audit/service.js'

@@ -3,7 +3,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tasksRouter } from './routes/tasks.js'
+import { authRouter } from './routes/auth.js'
 import { auditRouter } from './routes/audit.js'
+import { dbRouter } from './routes/db.js'
 import { knowledgeRouter } from './routes/knowledge.js'
 import { playbooksRouter } from './routes/playbooks.js'
 import { incidentsRouter } from './routes/incidents.js'
@@ -50,7 +52,9 @@ export function createApp(): Express {
   app.get('/health', (_req, res) => res.json({ ok: true, version: VERSION }))
 
   app.use('/tasks', tasksRouter)
+  app.use('/auth', authRouter)
   app.use('/audit', auditRouter)
+  app.use('/db', dbRouter)
   app.use('/knowledge', knowledgeRouter)
   app.use('/playbooks', playbooksRouter)
   app.use('/incidents', incidentsRouter)

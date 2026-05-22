@@ -6,14 +6,16 @@ import { TasksTab } from '@/tabs/TasksTab'
 import { AuditTab } from '@/tabs/AuditTab'
 import { CostTab } from '@/tabs/CostTab'
 import { KnowledgeTab } from '@/tabs/KnowledgeTab'
+import { SettingsTab } from '@/tabs/SettingsTab'
 
-type Tab = 'tasks' | 'audit' | 'cost' | 'knowledge'
+type Tab = 'tasks' | 'audit' | 'cost' | 'knowledge' | 'settings'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'audit', label: 'Audit' },
   { id: 'cost', label: 'Cost' },
   { id: 'knowledge', label: 'Knowledge' },
+  { id: 'settings', label: 'Settings' },
 ]
 
 function Dashboard() {
@@ -43,6 +45,7 @@ function Dashboard() {
         {tab === 'audit' && <AuditTab />}
         {tab === 'cost' && <CostTab />}
         {tab === 'knowledge' && <KnowledgeTab />}
+        {tab === 'settings' && <SettingsTab />}
       </main>
     </div>
   )

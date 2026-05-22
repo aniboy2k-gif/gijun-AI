@@ -4,6 +4,79 @@ All notable changes to `policyloop` (formerly `gijun-ai`) are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.6.0] — Unreleased
+
+### Added
+
+- **Settings tab (web)** — masked current token, rotation timestamp, "Rotate
+  Token" button with confirm dialog + acknowledge gate, and Database stats
+  panel (table counts, DB path, size). New tab in the dashboard header.
+  (CSR #758, plan: `tranquil-forging-kitten.md`)
+- **`POST /auth/rotate-token`** — server-side token rotation with a 5-second
+  grace window. Generates 32-byte hex token, writes `.env.local` atomically,
+  emits `auth.token_rotated` audit event, then mutates the in-memory holder.
+  Requires `X-AgentGuard-Confirm-Rotate: yes` header and Origin hostname of
+  `127.0.0.1` / `localhost` (or absent) — defense against same-host CSRF.
+  Concurrent calls return 409 `rotation_in_progress`.
+- **`GET /auth/token-info`** — masked token (`****<5-char-suffix>`) and last
+  rotation timestamp.
+- **`GET /db/stats`** — approximate table counts via `MAX(id)` (O(1) on
+  monotonic PKs, avoids COUNT(*) blocking the event loop), DB path, and
+  file size. Response includes `counts_are_approximate: true`.
+- **Mutable token holder** (`packages/server/src/auth/token-holder.ts`) —
+  replaces module-load token caching with a runtime-mutable store, enabling
+  rotation without server restart. `isTokenValid()` accepts the current token
+  and (for 5 seconds after rotation) the previous token via
+  `crypto.timingSafeEqual`.
+- **`.env.local` atomic write helper** (`packages/server/src/auth/env-file.ts`)
+  — symlink rejection (`lstatSync`), tmp-file write with `chmod 0600` then
+  `rename` (POSIX atomic), boot-time sweep of stale `.env.local.tmp.*` files
+  left over from prior crashes. `AGENTGUARD_ENV_FILE` env override is honored
+  only when `NODE_ENV=test`.
+- **Key-name audit redaction** (`packages/core/src/audit/service.ts`) —
+  payload keys ending in `token`, `secret`, `password`, `api[_-]?key`,
+  `authorization`, `cookie`, `session_id`, `refresh_token`, `access_token` are
+  redacted regardless of value shape, covering high-entropy secrets (lowercase
+  hex tokens) that the existing value-pattern regex did not match.
+
+### Security
+
+Five blocking findings from internal `security-engineer` review of plan
+`tranquil-forging-kitten.md` are addressed in this release:
+
+- **C1 (CSRF)** — `X-AgentGuard-Confirm-Rotate: yes` header + Origin hostname
+  enforcement on `POST /auth/rotate-token` (loopback binding alone is not
+  sufficient against same-host browser attackers).
+- **C2 (audit redaction)** — key-name pattern matching in `redactPayload`
+  covers the 32-char lowercase hex `AGENTGUARD_TOKEN` shape that previously
+  slipped through value-pattern regex.
+- **C3 (atomic ordering)** — rotation order is now backup → env-file write →
+  audit append → holder mutation, with explicit env-file restore on audit
+  failure. Eliminates "audit chain gap" (env succeeded but audit failed) and
+  "instant lockout" (in-memory rotated but `.env.local` stale on restart).
+- **H1 (concurrent rotate)** — module-level mutex returns `409
+  rotation_in_progress` for the second of two near-simultaneous calls.
+- **H3 (symlink / tmp leftover)** — `.env.local` symlink rejected; boot-time
+  sweep removes stale tmp files from prior crashes.
+
+External 4-AI DA Tier 1 (security role) review is deferred to a follow-up
+session (CSR #758 user decision, 2026-05-22). Rate limiting (M1, ~5
+rotations / 10 min token bucket) is deferred to a separate CSR.
+
+### Test coverage
+
+- 11 new tests in `packages/server/src/__tests__/auth.rotate-token.e2e.test.ts`
+  — happy path + 5 s grace + concurrent rotate + 4 negative paths (no
+  confirmation, foreign Origin, no auth, symlink) + audit chain integrity +
+  redacted payload assertion + sweep + env-file override guard + `isTokenValid`
+  edge cases.
+- 3 new tests in `packages/server/src/__tests__/db.stats.e2e.test.ts`.
+- 9 new tests in `packages/core/src/__tests__/redaction-key-name.test.ts`
+  covering each key-name pattern (suffix-only) with positive and negative
+  assertions.
+- Verified Red→Green: with `REDACT_KEY_PATTERN` disabled, 7 new redaction
+  tests fail; with it enabled, all 168 tests pass across the workspace.
+
 ## [0.5.1] — 2026-05-22
 
 ### Context

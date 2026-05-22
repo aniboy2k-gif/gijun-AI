@@ -54,4 +54,16 @@ export const api = {
       `/tasks/${id}/status`,
       { method: 'PATCH', body: JSON.stringify({ status }) },
     ),
+  tokenInfo: () =>
+    apiFetch<{ rotated_at: string; masked: string }>('/auth/token-info'),
+  rotateToken: () =>
+    apiFetch<{ token: string; rotated_at: string }>(
+      '/auth/rotate-token',
+      { method: 'POST', headers: { 'X-AgentGuard-Confirm-Rotate': 'yes' } },
+    ),
+  dbStats: () =>
+    apiFetch<{
+      tasks: number; audit_events: number; knowledge_items: number;
+      db_path: string; db_size_bytes: number | null; counts_are_approximate: boolean;
+    }>('/db/stats'),
 }
