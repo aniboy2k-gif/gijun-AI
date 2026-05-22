@@ -2,7 +2,7 @@
 // Plan v2 reference: ~/workspace/gijun-ai/prompt_plan.md §P1
 // Note: auth/test-mode.ts does not exist yet — these tests should FAIL at import time
 
-import { test, before, after } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 
@@ -30,7 +30,8 @@ test('validTestMode: returns true for valid token with current boot_epoch', () =
 
 test('validTestMode: returns false for replay token (different boot_epoch)', () => {
   // Simulate previous boot by manually crafting payload with old epoch
-  const HMAC_KEY = process.env['AGENTGUARD_CONFIG_HMAC_KEY']!
+  const HMAC_KEY = process.env['AGENTGUARD_CONFIG_HMAC_KEY']
+  if (!HMAC_KEY) throw new Error('test setup error: HMAC_KEY missing')
   const oldEpoch = getBootEpoch() - 1000 // 1 sec before current boot
   const payload = Buffer.from(
     JSON.stringify({ epoch: oldEpoch, ttl: Date.now() + 60_000 })
@@ -53,11 +54,12 @@ test('validTestMode: returns false for tampered signature', () => {
   const ttlMs = Date.now() + 60_000
   const token = generateTestMode(ttlMs)
   const [payload] = token.split('.')
+  if (!payload) throw new Error('test setup error: payload missing')
   // Forge signature with wrong key
   const wrongKey = crypto.randomBytes(32).toString('hex')
   const forgedSig = crypto
     .createHmac('sha256', wrongKey)
-    .update(payload!)
+    .update(payload)
     .digest('hex')
   const forgedToken = `${payload}.${forgedSig}`
   assert.equal(validTestMode(forgedToken), false, 'tampered signature must be rejected')
@@ -83,6 +85,6 @@ test('generateTestMode: returns a string in payload.signature format', () => {
   assert.equal(typeof token, 'string')
   const parts = token.split('.')
   assert.equal(parts.length, 2, 'token must be payload.signature format')
-  assert.ok(parts[0]!.length > 0, 'payload must be non-empty')
-  assert.equal(parts[1]!.length, 64, 'signature must be sha256 hex (64 chars)')
+  assert.ok(parts[0]?.length > 0, 'payload must be non-empty')
+  assert.equal(parts[1]?.length, 64, 'signature must be sha256 hex (64 chars)')
 })
