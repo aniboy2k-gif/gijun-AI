@@ -7,12 +7,24 @@ import crypto from 'node:crypto'
 const HMAC_KEY = process.env['AGENTGUARD_CONFIG_HMAC_KEY']
 const IS_PROD = process.env['NODE_ENV'] === 'production'
 const BOOT_EPOCH = Date.now()
+const MIN_HMAC_KEY_LENGTH = 32 // 256-bit entropy minimum (32 hex chars or 32 bytes raw)
 
 if (!HMAC_KEY && IS_PROD) {
   throw new Error(
     'agentguard_config_hmac_key_required_in_production: ' +
       'AGENTGUARD_CONFIG_HMAC_KEY env var must be set when NODE_ENV=production. ' +
       'See docs/migration-CSR-775.md for setup.'
+  )
+}
+
+// H-INT-3 (Internal review fix): weak-key brute-force resistance.
+// Reject HMAC_KEY shorter than 32 chars at module load to prevent ~24-bit entropy keys.
+if (HMAC_KEY && HMAC_KEY.length < MIN_HMAC_KEY_LENGTH) {
+  throw new Error(
+    `agentguard_config_hmac_key_too_short: ` +
+      `AGENTGUARD_CONFIG_HMAC_KEY must be at least ${MIN_HMAC_KEY_LENGTH} chars ` +
+      `(256-bit entropy). Got ${HMAC_KEY.length} chars. ` +
+      `Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
   )
 }
 
