@@ -3,6 +3,15 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 let _db: DatabaseSync | null = null
+let _dbPath: string | null = null
+
+export function currentDbPath(): string {
+  return _dbPath ?? (
+    process.env['AGENTGUARD_DB_PATH']
+      ?? process.env['GIJUN_DB_PATH']
+      ?? join(process.cwd(), '.agentguard', 'agentguard.db')
+  )
+}
 
 export function getDb(): DatabaseSync {
   if (_db) return _db
@@ -11,6 +20,7 @@ export function getDb(): DatabaseSync {
   const dbPath = process.env['AGENTGUARD_DB_PATH']
     ?? process.env['GIJUN_DB_PATH']
     ?? join(process.cwd(), '.agentguard', 'agentguard.db')
+  _dbPath = dbPath
   _db = new DatabaseSync(dbPath)
 
   _db.exec('PRAGMA journal_mode=WAL')
@@ -84,5 +94,6 @@ export function closeDb(): void {
     _db?.close()
   } finally {
     _db = null
+    _dbPath = null
   }
 }

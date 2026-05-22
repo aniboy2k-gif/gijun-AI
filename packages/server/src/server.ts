@@ -1,5 +1,6 @@
 import { runMigrations, assertSchemaChain, closeDb } from '@gijun-ai/core'
 import { createApp } from './app.js'
+import { sweepTmpFiles } from './auth/env-file.js'
 
 // fail-closed: token must be set before any request can succeed
 if (!process.env['AGENTGUARD_TOKEN']) {
@@ -10,6 +11,16 @@ if (!process.env['AGENTGUARD_TOKEN']) {
 
 const PORT = parseInt(process.env['AGENTGUARD_PORT'] ?? '3456', 10)
 const HOST = '127.0.0.1'  // local-only by design (contract #5)
+
+// H3: sweep any leftover .env.local.tmp.* from a prior crash mid-rotation.
+try {
+  const swept = sweepTmpFiles()
+  if (swept > 0) {
+    console.warn(`[agentguard] swept ${swept} stale .env.local.tmp.* file(s)`)
+  }
+} catch {
+  // best-effort
+}
 
 runMigrations()
 

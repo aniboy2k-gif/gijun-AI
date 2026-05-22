@@ -25,6 +25,11 @@ const REDACT_PATTERNS: RegExp[] = [
 ]
 const REDACTED_PLACEHOLDER = '[REDACTED]'
 
+// Key-name patterns: any payload key matching these is redacted regardless of
+// value shape. Covers high-entropy secrets that value-pattern regex misses
+// (e.g., lowercase hex tokens like AGENTGUARD_TOKEN).
+const REDACT_KEY_PATTERN = /(^|_)(token|secret|password|api[_-]?key|authorization|cookie|session[_-]?id|refresh[_-]?token|access[_-]?token)$/i
+
 function redactString(s: string): string {
   let result = s
   for (const pattern of REDACT_PATTERNS) {
@@ -39,7 +44,11 @@ function redactValue(value: unknown): unknown {
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = redactValue(v)
+      if (REDACT_KEY_PATTERN.test(k) && (typeof v === 'string' || typeof v === 'number')) {
+        out[k] = REDACTED_PLACEHOLDER
+      } else {
+        out[k] = redactValue(v)
+      }
     }
     return out
   }
