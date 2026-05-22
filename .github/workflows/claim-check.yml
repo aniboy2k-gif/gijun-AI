@@ -10,6 +10,12 @@ on:
       - "packages/**"
       - ".github/claim-map.yml"
       - ".github/workflows/claim-check.yml"
+      # CSR #756 옵션 B (2026-05-22): branch protection 'Verify README claims match code'
+      # required check가 영원 pending되는 BLOCKED 결함 해소 (PR #37, #39 사건 후속).
+      - "docs/**"
+      - "CONTRIBUTING.md"
+      - ".github/pull_request_template.md"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
     paths:
       - "README.md"
@@ -18,6 +24,11 @@ on:
       - "packages/**"
       - ".github/claim-map.yml"
       - ".github/workflows/claim-check.yml"
+      # CSR #756 옵션 B (2026-05-22): branch protection BLOCKED 결함 해소
+      - "docs/**"
+      - "CONTRIBUTING.md"
+      - ".github/pull_request_template.md"
+      - ".github/ISSUE_TEMPLATE/**"
 
 permissions:
   contents: read
