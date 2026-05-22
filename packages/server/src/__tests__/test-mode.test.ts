@@ -85,6 +85,8 @@ test('generateTestMode: returns a string in payload.signature format', () => {
   assert.equal(typeof token, 'string')
   const parts = token.split('.')
   assert.equal(parts.length, 2, 'token must be payload.signature format')
-  assert.ok(parts[0]?.length > 0, 'payload must be non-empty')
-  assert.equal(parts[1]?.length, 64, 'signature must be sha256 hex (64 chars)')
+  const [payload, signature] = parts
+  if (!payload || !signature) throw new Error('test setup error: parts incomplete')
+  assert.ok(payload.length > 0, 'payload must be non-empty')
+  assert.equal(signature.length, 64, 'signature must be sha256 hex (64 chars)')
 })
