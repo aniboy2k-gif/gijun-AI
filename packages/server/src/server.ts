@@ -1,6 +1,12 @@
 import { runMigrations, assertSchemaChain, closeDb } from '@gijun-ai/core'
 import { createApp } from './app.js'
 import { sweepTmpFiles } from './auth/env-file.js'
+import { assertSingleInstance } from './auth/cluster-guard.js'
+
+// CSR #775 P4 M6: fail-closed cluster/worker_threads/forked child detection.
+// Token holder's rotateInFlight boolean mutex is process-local; cluster mode
+// or worker_threads break the invariant. Refuse to boot in unsafe topology.
+assertSingleInstance()
 
 // fail-closed: token must be set before any request can succeed
 if (!process.env['AGENTGUARD_TOKEN']) {
