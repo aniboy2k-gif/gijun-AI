@@ -4,6 +4,51 @@ All notable changes to `policyloop` (formerly `gijun-ai`) are documented here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), semver.
 
+## [0.5.1] — 2026-05-22
+
+### Context
+
+Hotfix release for two HITL UI bugs discovered immediately after the
+v0.5.0 tag was pushed (CSR #755 — user decision option A).
+
+The v0.5.0 tag (`97efa01`) shipped the HITL approval button (PR #34) but
+the button never appeared in practice because the gate condition only
+checked `status === 'hitl_wait'`, while `createTask` returns `pending`
+for HITL-required tasks (the `hitl_required=1` flag is what marks them).
+PR #36, merged shortly after the tag, added the reject button and trigger
+reason display but inherited both the gate condition bug and a shape
+mismatch on `hitl_trigger.axes` (assumed `Array<{reason: string}>`,
+server returns `string[]`).
+
+Both bugs are fixed by PR #38, which is rolled up into v0.5.1.
+
+### Fixed
+
+- **HITL UI gate condition** (`packages/web/src/tabs/TasksTab.tsx`) —
+  approval/reject buttons now render when the task row has
+  `hitl_required === 1`, regardless of whether `status` is `pending` or
+  `hitl_wait`. Previously HITL-waiting tasks showed no buttons at all
+  (effectively dead UI). (#38)
+- **`hitl_trigger.axes` shape handling** (`packages/web/src/tabs/TasksTab.tsx`)
+  — `formatTrigger()` now treats `axes` as `string[]`, matching the
+  server-side `evaluateTaskHitl` return in `packages/core/src/hitl/gate.ts`.
+  The trigger reason now renders. (#38)
+
+### Tests
+
+- `packages/server/src/__tests__/rest-hitl-flow.e2e.test.ts` (+86 lines) —
+  two new e2e tests covering the HITL approval flow and the corrected
+  button-render condition. Server suite remains green (17/17 pass). (#38)
+
+### Notes
+
+- v0.5.0 tag is not retagged — preserves git history. CHANGELOG is the
+  canonical record. (CSR #755 option C rejected to avoid history rewrite.)
+- GitHub release notes for v0.5.0 unchanged per CSR #755 decision 3-B
+  (single-user project, external exposure minimal).
+
+---
+
 ## [0.5.0] — 2026-05-21
 
 ### Context
