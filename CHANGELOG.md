@@ -63,6 +63,45 @@ External 4-AI DA Tier 1 (security role) review is deferred to a follow-up
 session (CSR #758 user decision, 2026-05-22). Rate limiting (M1, ~5
 rotations / 10 min token bucket) is deferred to a separate CSR.
 
+#### Post-DA Hardening (CSR #771 → CSR #775)
+
+External 4-AI DA Tier 1 (security) verification (Gemini → ChatGPT → Claude
+Web → DeepSeek) discovered additional findings, integrated as PR #43:
+
+- **C1 (NEW CRITICAL — DeepSeek R4)** `AGENTGUARD_ENV_FILE` bypass via
+  `NODE_ENV=test` injection. `env-file.ts` now requires BOTH
+  `NODE_ENV=test` AND a valid `AGENTGUARD_TEST_MODE` HMAC token
+  (boot-epoch + TTL + HMAC-SHA256) for the override to be honored.
+- **C2 (NEW CRITICAL — DeepSeek R4)** HMAC key management for the test-mode
+  gate. New required env var `AGENTGUARD_CONFIG_HMAC_KEY` (production
+  fail-closed when missing). See `docs/migration-CSR-775.md` for setup.
+- **H3 (DeepSeek R4 H1)** Audit DB append-only OS flag —
+  `chflags uappnd` (macOS) / `chattr +a` (Linux) applied at boot via
+  `applyAppendOnlyFlagAtBoot()`. Production fail-closed on chattr failure.
+- **H4 (Claude Web R3-H1)** `crypto.timingSafeEqual` verification +
+  regression guard (AST grep + statistical timing test).
+- **H5 (Claude Web R3-H5)** `X-AgentGuard-CLI` header design — Option B
+  (header = path-hint, NOT auth). See `docs/threat-model-CSR-775.md`
+  for residual risk disclosure.
+- **M6 (Claude Web R3-M3)** Cluster guard correctness fix — proper
+  imports for `cluster.isWorker`, `isMainThread`, `process.send !== undefined`.
+  Fail-closed boot in cluster/worker_threads/forked-child topology.
+- **M7 (N/A — Claude Web R3-M2)** UA-based detection removal — code grep
+  confirmed 0 matches in `src/`. No-op.
+- **M8 (N/A — Claude Web R3-H3)** `fs.watch` symlink race — reload
+  mechanism not implemented; documented in threat-model for future work.
+
+Carry-forward (separate CSRs):
+- WORM external logging sink — CSR #777
+- DA infrastructure improvements (reject section / OWASP boundary docs /
+  enforceability tagging) — CSR #778
+- NTP-skew safe grace period (`performance.now()` monotonic) — separate CSR
+
+CWE coverage: CWE-352 (CSRF), CWE-916 (token hash), CWE-208 (timing),
+CWE-345 (data authenticity), CWE-330 (HMAC key origin), CWE-367 (TOCTOU),
+CWE-732 (incorrect permission), CWE-362 (race condition), CWE-664
+(resource lifetime).
+
 ### Test coverage
 
 - 11 new tests in `packages/server/src/__tests__/auth.rotate-token.e2e.test.ts`
