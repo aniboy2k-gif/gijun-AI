@@ -218,7 +218,9 @@ function transitionStatus(
     ).run(toStatus, reason ?? null, isActive, id, fromStatus)
 
     if ((affected.changes as number) !== 1) {
-      db.exec('ROLLBACK')
+      // Outer catch handles ROLLBACK — avoid double-rollback which raises a
+      // "cannot rollback - no transaction is active" SQLite error that masks
+      // the CodedError and surfaces as HTTP 500.
       throw new CodedError(
         ErrorCode.INVALID_STATE,
         `Knowledge item ${id} has status '${row.status ?? 'null'}', expected '${fromStatus}'`
