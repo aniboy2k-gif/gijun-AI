@@ -14,7 +14,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "tsc -p tsconfig.test.json && node --test 'dist-test/__tests__/*.test.js'"
+    "test": "tsc -p tsconfig.test.json && node --test 'dist-test/__tests__/*.test.js'",
+    "coverage": "tsc -p tsconfig.test.json && c8 --config ../../.c8rc.json --check-coverage node --test 'dist-test/__tests__/*.test.js'",
+    "coverage:report": "tsc -p tsconfig.test.json && c8 --config ../../.c8rc.json node --test 'dist-test/__tests__/*.test.js'"
   },
   "dependencies": {
     "zod": "^3.24.3"
