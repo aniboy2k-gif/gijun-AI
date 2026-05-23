@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { Check, RefreshCw, X } from 'lucide-react'
+import { Check, Plus, RefreshCw, X } from 'lucide-react'
+import { CreateTaskModal } from '@/components/CreateTaskModal'
 
 type Task = {
   id: number; title: string; status: string; complexity: string
@@ -49,6 +51,7 @@ function formatTrigger(trigger: string | null): string | null {
 
 export function TasksTab() {
   const qc = useQueryClient()
+  const [createModalOpen, setCreateModalOpen] = useState(false)
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api.tasks({ limit: 50 }) as Promise<Task[]>,
@@ -106,11 +109,22 @@ export function TasksTab() {
             </span>
           )}
         </div>
-        <button type="button" onClick={() => void refetch()} disabled={isFetching}
-          className="p-1.5 rounded hover:bg-accent disabled:opacity-40">
-          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setCreateModalOpen(true)}
+            className="flex items-center gap-1 h-7 px-2.5 text-xs font-medium border border-border rounded hover:bg-accent">
+            <Plus size={12} />
+            새 작업
+          </button>
+          <button type="button" onClick={() => void refetch()} disabled={isFetching}
+            className="p-1.5 rounded hover:bg-accent disabled:opacity-40">
+            <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
+
+      {createModalOpen && (
+        <CreateTaskModal onClose={() => setCreateModalOpen(false)} />
+      )}
 
       {mutationError && (
         <p className="text-xs text-red-600 px-1">처리 실패: {mutationError}</p>

@@ -1,5 +1,16 @@
 const TOKEN_KEY = 'gijun_token'
 
+export type CreateTaskInput = {
+  title: string
+  complexity?: 'trivial' | 'standard' | 'complex' | 'critical'
+  description?: string
+  project?: string
+  tags?: string[]
+  toolName?: string
+  actionType?: 'read' | 'write' | 'execute' | 'delete'
+  resource?: string
+}
+
 export function getToken(): string {
   return localStorage.getItem(TOKEN_KEY) ?? ''
 }
@@ -44,6 +55,11 @@ export const api = {
   costSummary: (period: string) => apiFetch<unknown>(`/traces/summary?period=${period}`),
   knowledgeDrafts: () => apiFetch<unknown[]>('/knowledge/drafts'),
   knowledge: () => apiFetch<unknown[]>('/knowledge'),
+  createTask: (input: CreateTaskInput) =>
+    apiFetch<{ id: number }>(
+      '/tasks',
+      { method: 'POST', body: JSON.stringify(input) },
+    ),
   approveHitl: (id: number, body?: { approver?: string; note?: string }) =>
     apiFetch<{ task: { id: number; status: string; hitl_approved_at: string } }>(
       `/tasks/${id}/hitl-approve`,
