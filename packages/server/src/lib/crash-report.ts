@@ -74,7 +74,7 @@ export function installCrashSanitizer(): void {
 
   process.on('unhandledRejection', (_reason: unknown) => {
     // Node.js v15+ fatal: registering any unhandledRejection listener suppresses
-    // the default exit. We must exit explicitly to maintain fail-close semantics.
+    // the default fatal exit. We must call process.exit(1) explicitly.
     const reportPath = process.report.writeReport()
     if (reportPath) sanitizeFile(reportPath)
     process.exit(1)
