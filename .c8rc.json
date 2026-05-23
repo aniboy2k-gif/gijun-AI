@@ -1,0 +1,16 @@
+{
+  "all": true,
+  "include": ["dist-test/**/*.js"],
+  "exclude": [
+    "**/__tests__/**",
+    "**/*.d.ts",
+    "dist-test/cli/**"
+  ],
+  "reporter": ["text", "text-summary", "lcov", "html"],
+  "reports-dir": "coverage",
+  "check-coverage": false,
+  "lines": 80,
+  "functions": 80,
+  "branches": 70,
+  "statements": 80
+}
