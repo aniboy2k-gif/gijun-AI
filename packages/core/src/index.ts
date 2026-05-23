@@ -2,6 +2,8 @@ export { getDb, runMigrations, closeDb, assertSchemaChain, currentDbPath } from 
 
 export { appendAuditEvent, insertAuditEventInTx, tailAuditEvents, redactPayload, AuditEventSchema } from './audit/service.js'
 export type { AuditEventInput } from './audit/service.js'
+export { redactString, redactValue, REDACT_KEY_PATTERN, REDACT_PATTERNS, REDACTED_PLACEHOLDER } from './audit/redact.js'
+export { installLogSanitizer, resolveLogSanitizeEnabled } from './lib/log-sanitizer.js'
 export { verifyChain, runVerifyChainCli } from './audit/verify-chain.js'
 export type { VerifyOptions, VerifyResult, VerifyResultItem } from './audit/verify-chain.js'
 

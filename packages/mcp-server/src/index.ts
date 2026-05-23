@@ -4,6 +4,12 @@
  * Supports STDIO (default) and Streamable HTTP transports.
  * Tools call packages/server REST API (single-entry-point contract #1).
  */
+// CSR #780 R2-C3: install log sanitizer early (parity with server.ts).
+import { installLogSanitizer, resolveLogSanitizeEnabled } from '@gijun-ai/core'
+if (resolveLogSanitizeEnabled(process.env['AGENTGUARD_LOG_SANITIZE'])) {
+  installLogSanitizer()
+}
+
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
