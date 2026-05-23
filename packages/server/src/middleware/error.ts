@@ -12,6 +12,7 @@ const CODE_TO_HTTP: Record<string, number> = {
   [ErrorCode.NOT_FOUND]: 404,
   [ErrorCode.CONFLICT]: 409,
   [ErrorCode.HITL_REQUIRED]: 409,
+  [ErrorCode.INVALID_STATE]: 409,
   [ErrorCode.POLICY_OVERFLOW]: 500,
   [ErrorCode.VALIDATION]: 400,
 }
