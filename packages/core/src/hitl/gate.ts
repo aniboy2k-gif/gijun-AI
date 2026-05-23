@@ -121,7 +121,7 @@ function strictModeEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
  *   critical_complexity, complex_complexity, incomplete_context,
  *   strict_mode_downgraded.
  *
- * Fail-closed principle: missing context fields escalate severity rather than
+ * fail-mode: A — Fail-closed principle: missing context fields escalate severity rather than
  * weaken the gate. critical complexity always requires HITL regardless of fields.
  * complex complexity requires HITL unless all context fields are absent AND
  * GIJUN_HITL_STRICT_MODE=0 is explicitly set (opt-out). v0.1.2: strict is the
