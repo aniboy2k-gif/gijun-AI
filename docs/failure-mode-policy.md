@@ -91,7 +91,7 @@ Trade-off:
 
 The following hardening items are tracked separately to avoid bloating this PR:
 - **R2-M4 latency baseline + restart-jitter helper** — Phase 2 in the same PR; once landed, §5 row 2 status becomes `Implemented` and §6 cluster-mode pointer activates.
-- **R2-C3 Credential exfiltration** — log interceptor + crash dump redact + heap snapshot guide (carry-forward to Phase 3 / separate CSR).
+- **R2-C3 Credential exfiltration** — **Implemented (CSR #780, 2026-05-23)**: log sanitizer (`packages/core/src/lib/log-sanitizer.ts`), crash-report sanitizer (`packages/server/src/lib/crash-report.ts`), redact helpers extracted to `packages/core/src/audit/redact.ts`, guide `docs/credential-sanitization-guide.md`. Remaining limits (stderr direct, `--diagnostic-report-on-uncaught-exception`, heap snapshot, child process env) documented in the guide.
 - **External 4-AI Tier 1 DA re-verification** — after merge (separate session).
 - **Cluster mode introduction** — currently boot fail-closes any multi-process topology; if introduced, the `restart-jitter` helper (Phase 2 R2-M4 artifact, dormant until cluster mode is enabled) becomes active.
 - **Internal review carry-forward items** (CSR #777 Phase 1 review, 2026-05-23): H1 (line column semantic check), M1 (drift regex extension to UPPER_SNAKE), M3 (CWE mapping deepening), M5 (`packages/web/src/` SCAN_ROOTS inclusion), L1-L5 (descriptions, README coupling, CI integration, public-repo info-disclosure rotation, exclusion list extraction).

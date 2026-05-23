@@ -1,6 +1,16 @@
-import { runMigrations, assertSchemaChain, closeDb } from '@gijun-ai/core'
+import { runMigrations, assertSchemaChain, closeDb, installLogSanitizer, resolveLogSanitizeEnabled } from '@gijun-ai/core'
 import { createApp } from './app.js'
 import { sweepTmpFiles } from './auth/env-file.js'
+import { installCrashSanitizer } from './lib/crash-report.js'
+
+// CSR #780 R2-C3: install log and crash-report sanitizers at boot (earliest possible point).
+if (resolveLogSanitizeEnabled(process.env['AGENTGUARD_LOG_SANITIZE'])) {
+  installLogSanitizer()
+  console.info('[agentguard] log sanitizer installed')
+} else {
+  console.warn('[agentguard] WARNING: log sanitization DISABLED (AGENTGUARD_LOG_SANITIZE=0)')
+}
+installCrashSanitizer()
 
 // fail-mode: A — fail-closed: token must be set before any request can succeed
 if (!process.env['AGENTGUARD_TOKEN']) {

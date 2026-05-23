@@ -1,63 +1,11 @@
 import { z } from 'zod'
 import { getDb } from '../db/client.js'
 import { computeContentHash, computeChainHash, getGenesisHash } from './chain.js'
+import { redactPayload } from './redact.js'
 
-// Patterns that match common API key / token formats.
-// Applied to string values inside payload before storage.
-// Scope (8 patterns): OpenAI · Anthropic · Bearer · GitHub PAT ·
-//   AWS Access Key (AKIA/ASIA) · AWS Secret Key (keyword-context) ·
-//   GCP private key (PEM block) · Azure Storage Account Key
-// NOT covered (false-positive risk): standalone 40-char Base64, Stripe,
-//   Slack bot token, JWT, PII — tracked in v0.2 roadmap.
-const REDACT_PATTERNS: RegExp[] = [
-  // ── existing 4 ──────────────────────────────────────────────────
-  /sk-[A-Za-z0-9_-]{20,}/g,
-  /sk-ant-[A-Za-z0-9_-]{20,}/g,
-  /Bearer\s+[A-Za-z0-9._-]{20,}/gi,
-  /ghp_[A-Za-z0-9]{36}/g,
-  // ── AWS ─────────────────────────────────────────────────────────
-  /(?:AKIA|ASIA)[0-9A-Z]{16}/g,                              // Access Key ID (long-term + STS temporary)
-  /(?:aws_?secret|secret_?access_?key)\s*[=:"'\s]+[A-Za-z0-9/+=]{40}/gi, // Secret Key (keyword context)
-  // ── GCP ─────────────────────────────────────────────────────────
-  /-----BEGIN(?:\s+[A-Z]+)?\s+PRIVATE KEY-----/gi,           // PEM block header (JSON/YAML/env-var agnostic)
-  // ── Azure ───────────────────────────────────────────────────────
-  /AccountKey=[A-Za-z0-9+/]{86}==/g,                        // Storage Account Key (88-char Base64, always ==)
-]
-const REDACTED_PLACEHOLDER = '[REDACTED]'
-
-// Key-name patterns: any payload key matching these is redacted regardless of
-// value shape. Covers high-entropy secrets that value-pattern regex misses
-// (e.g., lowercase hex tokens like AGENTGUARD_TOKEN).
-const REDACT_KEY_PATTERN = /(^|_)(token|secret|password|api[_-]?key|authorization|cookie|session[_-]?id|refresh[_-]?token|access[_-]?token)$/i
-
-function redactString(s: string): string {
-  let result = s
-  for (const pattern of REDACT_PATTERNS) {
-    result = result.replace(pattern, REDACTED_PLACEHOLDER)
-  }
-  return result
-}
-
-function redactValue(value: unknown): unknown {
-  if (typeof value === 'string') return redactString(value)
-  if (Array.isArray(value)) return value.map(redactValue)
-  if (value !== null && typeof value === 'object') {
-    const out: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (REDACT_KEY_PATTERN.test(k) && (typeof v === 'string' || typeof v === 'number')) {
-        out[k] = REDACTED_PLACEHOLDER
-      } else {
-        out[k] = redactValue(v)
-      }
-    }
-    return out
-  }
-  return value
-}
-
-export function redactPayload(payload: Record<string, unknown>): Record<string, unknown> {
-  return redactValue(payload) as Record<string, unknown>
-}
+// Sanitization logic lives in audit/redact.ts (CSR #780 Phase 1).
+// Re-exported for backward compatibility.
+export { redactPayload } from './redact.js'
 
 export const AuditEventSchema = z.object({
   eventType: z.string().min(1),
