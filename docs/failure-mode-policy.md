@@ -75,16 +75,14 @@ External compliance reference (informational, full mapping carry-forward):
 
 ## 5. Side-Channel Mitigation Matrix
 
-> **⚠ Status**: One row below (`Constant-time token compare`) is **already in place**; the other row (`Artificial latency baseline`) is **planned for Phase 2 (R2-M4), not yet implemented**. Do not rely on the latter as a current protection.
-
 Auth failure paths are particularly sensitive to **timing side-channels**.
 
 | Mechanism | Where | Default | Status | Override |
 |-----------|-------|---------|--------|----------|
 | Constant-time token compare | `packages/core/src/lib/crypto-compare.ts` (`safeTokenCompare` using `timingSafeEqual`) | always on | **Implemented** | n/a |
-| Artificial latency baseline on 401/503 | `packages/server/src/middleware/auth.ts` | 50ms ± 10% jitter | **Planned (Phase 2 R2-M4)** | env `AGENTGUARD_AUTH_FAIL_DELAY_MS` ∈ [0, 500]; set to 0 to opt out (graceful degrade tier) |
+| Artificial latency baseline on 401/503 | `packages/server/src/middleware/auth.ts` (`resolveAuthFailDelayMs` + `jitteredDelay`) | 50ms ± 10% jitter | **Implemented (Phase 2-a, CSR #777)** | env `AGENTGUARD_AUTH_FAIL_DELAY_MS` ∈ [0, 500]; set to 0 to opt out (graceful degrade tier) |
 
-Trade-off (applies after Phase 2 lands):
+Trade-off:
 - **Pro**: Removes observable timing difference between 401 (invalid token) and 503 (server unconfigured), and between fast-reject vs late-reject paths.
 - **Con**: Sustained 401 traffic incurs queued delay; a connection-flooding attacker can amplify resource usage. Mitigated by `max=500ms` cap and local-only `HOST=127.0.0.1` (contract #5) which prevents remote exploitation.
 - **Tier**: Mechanism itself is Tier A (security-critical). Opting out via env=0 is an explicit Tier-B graceful-degrade decision the operator owns.
