@@ -39,7 +39,7 @@ const MCP_TOKEN = process.env['AGENTGUARD_MCP_TOKEN'] ?? ''
 const HTTP_PORT = parseInt(process.env['AGENTGUARD_MCP_PORT'] ?? '3457', 10)
 const HTTP_HOST = '127.0.0.1'  // local-only (contract #5)
 
-// fail-closed: HTTP mode requires its own token
+// fail-mode: A — fail-closed: HTTP mode requires its own token
 if (TRANSPORT === 'http' && !MCP_TOKEN) {
   console.error('[agentguard-mcp] FATAL: AGENTGUARD_MCP_TOKEN required for http transport.')
   process.exit(1)
