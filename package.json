@@ -30,8 +30,8 @@
     "coverage:report": "pnpm --filter @gijun-ai/core --filter @gijun-ai/server coverage:report"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.13",
-    "@types/node": "^25.6.0",
+    "@biomejs/biome": "^2.4.15",
+    "@types/node": "^25.9.1",
     "c8": "^11.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.8.3"
